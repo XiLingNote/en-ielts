@@ -38,38 +38,120 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* 顶部导航：超轻薄纯粹菜单置顶 (Fixed Top Bar) */
+    /* 顶部导航：超轻薄常驻置顶，支持展开全貌 (Fixed Top Bar) */
     header {
-      background-color: rgba(15, 23, 42, 0.95) !important;
+      background-color: rgba(15, 23, 42, 0.96) !important;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 6px 16px;
+      padding: 6px 12px;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
       right: 0 !important;
       width: 100% !important;
-      height: 48px !important;
       z-index: 1000 !important;
       padding-top: max(6px, env(safe-area-inset-top));
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
       box-sizing: border-box;
+      transition: padding 0.2s ease, background-color 0.2s ease;
+    }
+
+    /* 展开区的 Logo 标题与词库管理栏 */
+    .header-extra-bar {
+      display: none;
+      width: 100%;
+      max-width: 1050px;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 6px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      animation: fadeIn 0.15s ease;
+    }
+
+    header.header-expanded .header-extra-bar {
+      display: flex;
+    }
+
+    .header-main-tabs-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .btn-header-expand {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .btn-header-expand:hover, .btn-header-expand:active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    header.header-expanded .btn-header-expand {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 3px 7px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .logo-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
     }
 
     /* 顶部模式切换按钮 */
     .mode-tabs {
+      flex: 1;
       display: flex;
       background: rgba(15, 23, 42, 0.85);
       padding: 3px;
       border-radius: 12px;
       border: 1px solid var(--card-border);
       gap: 6px;
-      width: 100%;
-      max-width: 480px;
     }
 
     .tab-btn {
@@ -79,7 +161,7 @@
       border: none;
       padding: 6px 14px;
       border-radius: 9px;
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
@@ -87,6 +169,7 @@
       justify-content: center;
       gap: 6px;
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
 
     .tab-btn:hover {
@@ -1396,17 +1479,38 @@
 </head>
 <body>
 
-  <!-- 顶部常驻栏 -->
-  <!-- 顶部常驻极简菜单栏 (超轻薄纯粹菜单) -->
-  <header>
-    <div class="mode-tabs">
-      <button class="tab-btn active" id="tab-btn-player">
-        <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        循环伴读
-      </button>
-      <button class="tab-btn" id="tab-btn-reader">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        全景通读词书
+  <!-- 顶部常驻导航栏 (默认纯粹极简菜单，支持点击展开全貌) -->
+  <header id="site-header">
+    <!-- 展开区：Logo 标题与词库管理 (点击右上角 ⋯ 展开) -->
+    <div class="header-extra-bar" id="header-extra-bar">
+      <div class="logo-area">
+        <span class="logo-badge">IELTS</span>
+        <h1 class="logo-title">雅思 2683 核心词汇</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn-action" id="btn-open-import" style="padding: 5px 10px; font-size:12px; min-height:30px;">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          词库管理
+        </button>
+        <button class="btn-action" id="btn-reset" style="padding: 5px 8px; font-size:12px; min-height:30px;" title="从头开始">重置</button>
+      </div>
+    </div>
+
+    <!-- 模式切换核心常驻条 (100% 永久置顶) -->
+    <div class="header-main-tabs-row">
+      <div class="mode-tabs">
+        <button class="tab-btn active" id="tab-btn-player">
+          <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          循环伴读
+        </button>
+        <button class="tab-btn" id="tab-btn-reader">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          全景通读词书
+        </button>
+      </div>
+      <!-- 展开/收起顶部全貌按钮 -->
+      <button class="btn-header-expand" id="btn-toggle-header-expand" title="点击展开/收起顶部标题与管理">
+        <span id="header-expand-icon">⋯</span>
       </button>
     </div>
   </header>
@@ -2992,6 +3096,39 @@
         jumpLettersGrid.appendChild(btn);
       });
     }
+
+    // ==========================================
+    // 🧭 顶部导航栏展开/收起与滚动感知逻辑
+    // ==========================================
+    const siteHeader = document.getElementById("site-header");
+    const btnToggleHeaderExpand = document.getElementById("btn-toggle-header-expand");
+    const headerExpandIcon = document.getElementById("header-expand-icon");
+
+    function setHeaderExpanded(expanded) {
+      if (!siteHeader) return;
+      if (expanded) {
+        siteHeader.classList.add("header-expanded");
+        if (headerExpandIcon) headerExpandIcon.textContent = "✕";
+      } else {
+        siteHeader.classList.remove("header-expanded");
+        if (headerExpandIcon) headerExpandIcon.textContent = "⋯";
+      }
+    }
+
+    if (btnToggleHeaderExpand) {
+      btnToggleHeaderExpand.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isExpanded = siteHeader.classList.contains("header-expanded");
+        setHeaderExpanded(!isExpanded);
+      });
+    }
+
+    // 当用户向下滑动页面时，自动收起展开的 Header，确保沉浸式最大视野
+    window.addEventListener("scroll", () => {
+      if (siteHeader && siteHeader.classList.contains("header-expanded") && window.scrollY > 40) {
+        setHeaderExpanded(false);
+      }
+    }, { passive: true });
 
     loadSavedData();
     initAlphabetNav();
