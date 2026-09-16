@@ -38,20 +38,21 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* 顶部导航 */
+    /* 顶部导航：吸顶置顶 */
     header {
-      background-color: rgba(30, 41, 59, 0.92);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--card-border);
-      padding: 12px 16px;
+      background-color: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       position: sticky;
       top: 0;
-      z-index: 50;
-      padding-top: max(12px, env(safe-area-inset-top));
+      z-index: 60;
+      padding-top: max(10px, env(safe-area-inset-top));
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     }
 
     .logo-area {
@@ -742,7 +743,32 @@
 
     .reader-card.playing-active {
       border-color: var(--accent);
-      background: rgba(56, 189, 248, 0.06);
+      background: rgba(56, 189, 248, 0.1);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.22);
+      position: relative;
+    }
+
+    .reader-card.playing-active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 4px;
+      background: var(--accent);
+      border-radius: 0 4px 4px 0;
+    }
+
+    .btn-reader-jump.active-playing {
+      background: rgba(56, 189, 248, 0.25) !important;
+      color: var(--accent) !important;
+      border: 1px solid rgba(56, 189, 248, 0.6) !important;
+      font-weight: 700 !important;
+    }
+
+    #btn-reader-toggle-play.playing {
+      background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.45) !important;
     }
 
     .reader-card-info {
@@ -1304,6 +1330,10 @@
             <input type="text" id="reader-search-input" placeholder="输入英文或中文搜索（如 accept 或 接受）...">
             <button class="search-clear-btn" id="reader-search-clear">✕</button>
           </div>
+          <button class="btn-primary" id="btn-reader-toggle-play" style="padding: 7px 14px; font-size: 13px; border-radius: 9px; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0;" title="在全景模式下开启/暂停循环朗读">
+            <span id="reader-play-icon">▶</span>
+            <span id="reader-play-text">连续伴读</span>
+          </button>
           <span class="reader-stats" id="reader-stats">共 2,596 词</span>
         </div>
         <!-- 字母导航栏 -->
@@ -1656,6 +1686,7 @@
 
       localStorage.setItem("english_words_index", currentIndex);
       updateWordListActive();
+      updateReaderActiveCard();
       updateMediaSession();
       updateFakeScreenDisplay();
     }
@@ -1698,10 +1729,71 @@
       const currentActive = document.getElementById(`list-word-${currentIndex}`);
       if (currentActive) {
         currentActive.classList.add("active");
-        if (currentActive.scrollIntoView) {
-          currentActive.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        
+        // 关键修复：仅计算并调整 wordListContainer 容器内部滚动条，绝不调用 currentActive.scrollIntoView()
+        // 彻底消除手机端在大卡片区域操作时由于 scrollIntoView 导致整个窗口被强制滚到底部目录的现象
+        const itemTop = currentActive.offsetTop;
+        const itemHeight = currentActive.offsetHeight;
+        const containerScroll = wordListContainer.scrollTop;
+        const containerHeight = wordListContainer.clientHeight;
+
+        if (itemTop < containerScroll) {
+          wordListContainer.scrollTo({ top: itemTop, behavior: "smooth" });
+        } else if (itemTop + itemHeight > containerScroll + containerHeight) {
+          wordListContainer.scrollTo({ top: itemTop + itemHeight - containerHeight, behavior: "smooth" });
         }
       }
+    }
+
+    function updateReaderPlayButtonUI() {
+      const btnReaderToggle = document.getElementById("btn-reader-toggle-play");
+      const readerPlayIcon = document.getElementById("reader-play-icon");
+      const readerPlayText = document.getElementById("reader-play-text");
+
+      if (btnReaderToggle && readerPlayText) {
+        if (isPlaying) {
+          btnReaderToggle.classList.add("playing");
+          if (readerPlayIcon) readerPlayIcon.textContent = "⏸";
+          readerPlayText.textContent = "暂停伴读";
+        } else {
+          btnReaderToggle.classList.remove("playing");
+          if (readerPlayIcon) readerPlayIcon.textContent = "▶";
+          readerPlayText.textContent = "连续伴读";
+        }
+      }
+
+      document.querySelectorAll(".btn-reader-jump").forEach(btn => {
+        const card = btn.closest(".reader-card");
+        if (card && card.id === `reader-card-${currentIndex}` && isPlaying) {
+          btn.textContent = "⏸ 暂停";
+          btn.classList.add("active-playing");
+        } else {
+          btn.textContent = "▶ 伴读";
+          btn.classList.remove("active-playing");
+        }
+      });
+    }
+
+    function updateReaderActiveCard(shouldScroll = false) {
+      if (currentIndex >= readerRenderLimit) {
+        readerRenderLimit = Math.min(words.length, currentIndex + 50);
+        renderReaderView();
+      }
+
+      const prevActive = readerCardsContainer.querySelector(".playing-active");
+      if (prevActive) prevActive.classList.remove("playing-active");
+
+      const currentCard = document.getElementById(`reader-card-${currentIndex}`);
+      if (currentCard) {
+        currentCard.classList.add("playing-active");
+
+        // 如果处于全景通读视图且（正在连续伴读 或 显式要求滚动），平滑滚动跟随卡片
+        if (currentView === "reader" && (isPlaying || shouldScroll)) {
+          currentCard.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+      }
+
+      updateReaderPlayButtonUI();
     }
 
     function jumpToIndex(idx, shouldSpeak = true) {
@@ -1940,6 +2032,7 @@
         acquireWakeLock();
         updateMediaSession();
         updateFakeScreenDisplay();
+        updateReaderPlayButtonUI();
 
         stopSpeaking();
         playCurrentWord();
@@ -1948,6 +2041,7 @@
         pauseIcon.style.display = "none";
         releaseWakeLock();
         updateMediaSession();
+        updateReaderPlayButtonUI();
         stopSpeaking();
       }
     }
@@ -2261,30 +2355,31 @@
         const soundBtn = card.querySelector(".btn-reader-sound");
         soundBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          document.querySelectorAll(".reader-card").forEach(c => c.classList.remove("playing-active"));
-          card.classList.add("playing-active");
           jumpToIndex(item.originalIndex, true);
         });
 
-        // 按钮事件：跳转到伴读卡片播放
+        // 按钮事件：在全景词书模式下直接开启/暂停伴读，不跳回播放器页面，直接跟随卡片往下读
         const jumpBtn = card.querySelector(".btn-reader-jump");
         jumpBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          switchView("player");
-          jumpToIndex(item.originalIndex, false);
-          if (!isPlaying) {
-            togglePlay(true);
+          if (isPlaying && currentIndex === item.originalIndex) {
+            togglePlay(false);
           } else {
-            stopSpeaking();
+            currentIndex = item.originalIndex;
             currentRepeatCount = 0;
-            playCurrentWord();
+            renderWord();
+            if (!isPlaying) {
+              togglePlay(true);
+            } else {
+              stopSpeaking();
+              playCurrentWord();
+            }
           }
         });
 
-        // 点击卡片本身：选定并发音
-        card.addEventListener("click", () => {
-          document.querySelectorAll(".reader-card").forEach(c => c.classList.remove("playing-active"));
-          card.classList.add("playing-active");
+        // 点击卡片本身：选定并发音（停留在全景模式）
+        card.addEventListener("click", (e) => {
+          if (e.target.closest(".btn-reader-sound") || e.target.closest(".btn-reader-jump")) return;
           jumpToIndex(item.originalIndex, true);
         });
 
@@ -2305,6 +2400,14 @@
         });
         readerCardsContainer.appendChild(moreBtn);
       }
+    }
+
+    // 全景通读工具栏伴读播放按钮
+    const btnReaderTogglePlay = document.getElementById("btn-reader-toggle-play");
+    if (btnReaderTogglePlay) {
+      btnReaderTogglePlay.addEventListener("click", () => {
+        togglePlay();
+      });
     }
 
     // 搜索输入防抖
