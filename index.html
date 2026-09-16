@@ -563,6 +563,7 @@
     }
 
     .word-list-content {
+      position: relative;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       display: flex;
@@ -2150,18 +2151,18 @@
       if (currentActive) {
         currentActive.classList.add("active");
         
-        // 关键修复：仅计算并调整 wordListContainer 容器内部滚动条，绝不调用 currentActive.scrollIntoView()
-        // 彻底消除手机端在大卡片区域操作时由于 scrollIntoView 导致整个窗口被强制滚到底部目录的现象
-        const itemTop = currentActive.offsetTop;
-        const itemHeight = currentActive.offsetHeight;
-        const containerScroll = wordListContainer.scrollTop;
-        const containerHeight = wordListContainer.clientHeight;
+        // 关键：基于相对坐标计算并平滑居中滚动 wordListContainer 内部滚动条
+        // 彻底杜绝全局 window 发生滚动，同时保证目录里的当前高亮单词随时居中展现
+        const itemRect = currentActive.getBoundingClientRect();
+        const containerRect = wordListContainer.getBoundingClientRect();
+        
+        const relativeTop = itemRect.top - containerRect.top;
+        const targetScroll = wordListContainer.scrollTop + relativeTop - (containerRect.height / 2) + (itemRect.height / 2);
 
-        if (itemTop < containerScroll) {
-          wordListContainer.scrollTo({ top: itemTop, behavior: "smooth" });
-        } else if (itemTop + itemHeight > containerScroll + containerHeight) {
-          wordListContainer.scrollTo({ top: itemTop + itemHeight - containerHeight, behavior: "smooth" });
-        }
+        wordListContainer.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: "smooth"
+        });
       }
     }
 
