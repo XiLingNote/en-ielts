@@ -1393,17 +1393,10 @@
     const btnConfirmImport = document.getElementById("btn-confirm-import");
     const importTextarea = document.getElementById("import-textarea");
 
-    // 0. 后台媒体保活与防息屏常亮驱动 (Screen Wake Lock & Silent Audio & MediaSession)
+    // 0. 后台与防息屏常亮驱动 (Screen Wake Lock & MediaSession)
     let wakeLock = null;
-    let silentAudio = null;
 
     function initBackgroundKeeper() {
-      // 1 样本微型静音 WAV base64，用于激活系统媒体播放特权
-      const silentWavBase64 = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-      silentAudio = new Audio(silentWavBase64);
-      silentAudio.loop = true;
-      silentAudio.volume = 0.01;
-
       if ("mediaSession" in navigator) {
         navigator.mediaSession.setActionHandler("play", () => togglePlay(true));
         navigator.mediaSession.setActionHandler("pause", () => togglePlay(false));
@@ -1452,23 +1445,6 @@
         album: `当前进度: ${currentIndex + 1} / ${words.length}`
       });
       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-    }
-
-    function startBackgroundAudio() {
-      if (silentAudio) {
-        silentAudio.play().catch(() => {});
-      }
-      updateMediaSession();
-      updateFakeScreenDisplay();
-    }
-
-    function stopBackgroundAudio() {
-      if (silentAudio) {
-        silentAudio.pause();
-      }
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "paused";
-      }
     }
 
     // 1. 本地存储还原
@@ -1870,13 +1846,20 @@
         pauseIcon.style.display = "block";
         currentRepeatCount = 0;
         acquireWakeLock();
-        startBackgroundAudio();
-        playCurrentWord();
+        updateMediaSession();
+        updateFakeScreenDisplay();
+        stopSpeaking();
+        // 延迟 60ms 确保音频通道复位，与“重读”完全对齐，确保正常播放 100% 响声
+        setTimeout(() => {
+          if (isPlaying) {
+            playCurrentWord();
+          }
+        }, 60);
       } else {
         playIcon.style.display = "block";
         pauseIcon.style.display = "none";
         releaseWakeLock();
-        stopBackgroundAudio();
+        updateMediaSession();
         stopSpeaking();
       }
     }
