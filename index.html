@@ -38,59 +38,65 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* 顶部导航：固定永久置顶 (Fixed Top Bar) */
+    /* 顶部导航：超轻薄纯粹菜单置顶 (Fixed Top Bar) */
     header {
-      background-color: rgba(15, 23, 42, 0.96) !important;
+      background-color: rgba(15, 23, 42, 0.95) !important;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 10px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 16px;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
       right: 0 !important;
       width: 100% !important;
+      height: 48px !important;
       z-index: 1000 !important;
-      padding-top: max(8px, env(safe-area-inset-top));
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      padding-top: max(6px, env(safe-area-inset-top));
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
       box-sizing: border-box;
     }
 
-    .header-main-bar {
+    /* 顶部模式切换按钮 */
+    .mode-tabs {
       display: flex;
-      align-items: center;
-      gap: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 3px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      gap: 6px;
+      width: 100%;
+      max-width: 480px;
     }
 
-    .logo-area {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logo-badge {
-      background: linear-gradient(135deg, #38bdf8, #818cf8);
-      color: #0f172a;
-      font-weight: 800;
-      font-size: 12px;
-      padding: 3px 7px;
-      border-radius: 6px;
-      letter-spacing: 0.5px;
-    }
-
-    .logo-title {
-      font-size: 16px;
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 6px 14px;
+      border-radius: 9px;
+      font-size: 13.5px;
       font-weight: 700;
-      letter-spacing: -0.3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
     }
 
-    .header-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: var(--card-bg);
+      color: var(--accent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     }
 
     /* 主布局 */
@@ -99,7 +105,7 @@
       max-width: 1050px;
       width: 100%;
       margin: 0 auto;
-      padding: calc(72px + env(safe-area-inset-top, 0px)) 16px 40px 16px;
+      padding: calc(58px + env(safe-area-inset-top, 0px)) 16px 40px 16px;
       display: grid;
       grid-template-columns: 1fr 320px;
       gap: 20px;
@@ -797,33 +803,12 @@
         grid-template-columns: 1fr;
       }
 
-      header {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        padding: 8px 12px !important;
-        gap: 8px !important;
-      }
-
-      .header-main-bar {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        width: 100% !important;
+      .container {
+        padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
       }
 
       .mode-tabs {
-        width: 100% !important;
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 4px !important;
-        margin: 0 !important;
-      }
-
-      .tab-btn {
-        justify-content: center !important;
-        padding: 7px 6px !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
+        max-width: 100% !important;
       }
     }
 
@@ -833,15 +818,15 @@
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 12px 16px;
+      border-radius: 14px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       position: sticky !important;
-      top: 64px !important;
+      top: calc(52px + env(safe-area-inset-top, 0px)) !important;
       z-index: 90 !important;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
     }
 
     .reader-search-row {
@@ -1234,7 +1219,7 @@
       max-width: 100% !important;
       width: 100% !important;
       min-width: 0 !important;
-      padding: calc(100px + env(safe-area-inset-top, 0px)) 10px 40px 10px !important;
+      padding: calc(56px + env(safe-area-inset-top, 0px)) 10px 40px 10px !important;
     }
 
     #view-player, #view-reader {
@@ -1248,9 +1233,9 @@
       width: 100% !important;
       min-width: 0 !important;
       position: sticky !important;
-      top: calc(92px + env(safe-area-inset-top, 0px)) !important;
+      top: calc(48px + env(safe-area-inset-top, 0px)) !important;
       z-index: 90 !important;
-      padding: 10px 12px !important;
+      padding: 8px 10px !important;
       border-radius: 14px !important;
     }
 
@@ -1275,7 +1260,7 @@
       min-width: 0 !important;
       word-break: break-word !important;
       overflow-wrap: anywhere !important;
-      scroll-margin-top: calc(190px + env(safe-area-inset-top, 0px)) !important;
+      scroll-margin-top: calc(148px + env(safe-area-inset-top, 0px)) !important;
     }
 
     .reader-card-info {
@@ -1294,7 +1279,7 @@
 
     @media (max-width: 640px) {
       .container {
-        padding-top: calc(102px + env(safe-area-inset-top, 0px)) !important;
+        padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
       }
 
       .controls-card {
@@ -1327,7 +1312,7 @@
         align-items: stretch !important;
         padding: 12px 14px !important;
         gap: 10px !important;
-        scroll-margin-top: calc(200px + env(safe-area-inset-top, 0px)) !important;
+        scroll-margin-top: calc(152px + env(safe-area-inset-top, 0px)) !important;
       }
 
       .reader-card-actions {
@@ -1360,7 +1345,7 @@
       }
 
       header {
-        padding: 8px 12px !important;
+        padding: 6px 12px !important;
       }
 
       .tab-btn {
@@ -1412,23 +1397,8 @@
 <body>
 
   <!-- 顶部常驻栏 -->
+  <!-- 顶部常驻极简菜单栏 (超轻薄纯粹菜单) -->
   <header>
-    <div class="header-main-bar">
-      <div class="logo-area">
-        <span class="logo-badge">IELTS</span>
-        <h1 class="logo-title">雅思 2683 核心词汇</h1>
-      </div>
-
-      <div class="header-actions">
-        <button class="btn-action header-btn" id="btn-open-import" style="padding: 6px 12px; font-size:12.5px;">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-          词库管理
-        </button>
-        <button class="btn-action header-btn" id="btn-reset" style="padding: 6px 10px; font-size:12.5px;" title="从头开始">重置</button>
-      </div>
-    </div>
-
-    <!-- 模式切换选项卡 (全景与伴读核心常驻菜单) -->
     <div class="mode-tabs">
       <button class="tab-btn active" id="tab-btn-player">
         <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1613,7 +1583,15 @@
             </div>
           </div>
 
-          <div style="display:flex; justify-content:flex-end; margin-top:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.08);">
+            <div style="display:flex; gap:10px;">
+              <button id="btn-open-import" style="background:none; border:none; color:var(--accent); font-size:12px; cursor:pointer; text-decoration:underline;">
+                📁 词库管理
+              </button>
+              <button id="btn-reset" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline;" title="从头开始">
+                重置
+              </button>
+            </div>
             <button id="btn-restore-default-settings" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline;">
               ✨ 恢复推荐参数
             </button>
