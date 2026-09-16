@@ -755,10 +755,8 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      position: sticky;
-      top: 64px;
-      z-index: 30;
-      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     }
 
     .reader-search-row {
@@ -866,7 +864,7 @@
       align-items: flex-start;
       gap: 14px;
       transition: border-color 0.2s, transform 0.15s;
-      scroll-margin-top: 210px;
+      scroll-margin-top: calc(75px + env(safe-area-inset-top, 0px));
     }
 
     .reader-card:hover {
@@ -1167,8 +1165,9 @@
       width: 100% !important;
       min-width: 0 !important;
       padding: 10px 12px !important;
-      top: calc(96px + env(safe-area-inset-top, 0px)) !important;
       border-radius: 12px !important;
+      position: relative !important;
+      top: auto !important;
     }
 
     .alphabet-nav {
@@ -1184,7 +1183,7 @@
       width: 100% !important;
       min-width: 0 !important;
       overflow-x: hidden !important;
-      padding-top: 6px !important;
+      padding-top: 0 !important;
     }
 
     .reader-card {
@@ -1193,7 +1192,7 @@
       min-width: 0 !important;
       word-break: break-word !important;
       overflow-wrap: anywhere !important;
-      scroll-margin-top: calc(220px + env(safe-area-inset-top, 0px)) !important;
+      scroll-margin-top: calc(85px + env(safe-area-inset-top, 0px)) !important;
     }
 
     .reader-card-info {
@@ -1211,16 +1210,12 @@
     }
 
     @media (max-width: 640px) {
-      .reader-toolbar {
-        top: calc(98px + env(safe-area-inset-top, 0px)) !important;
-      }
-
       .reader-card {
         flex-direction: column !important;
         align-items: stretch !important;
         padding: 12px 14px !important;
         gap: 10px !important;
-        scroll-margin-top: calc(235px + env(safe-area-inset-top, 0px)) !important;
+        scroll-margin-top: calc(90px + env(safe-area-inset-top, 0px)) !important;
       }
 
       .reader-card-actions {
@@ -2544,11 +2539,11 @@
         viewReader.classList.add("active");
         renderReaderView();
 
-        // 切换到通读词书时，立即重置滚动条到顶部，彻底防止因播放器界面的残留滚动偏移导致第一个卡片被吸顶栏遮盖
+        // 切换到通读词书时，立即重置滚动条到顶部，首个单词完好自然展现，彻底杜绝悬空和遮盖
         window.scrollTo({ top: 0, behavior: "instant" });
 
-        // 若当前播放索引大于0，则延时平滑滚动对齐到当前单词
-        if (currentIndex > 0) {
+        // 仅在伴读连续播放中且非第1个单词时，才自动平滑滚动对齐到当前播放卡片
+        if (isPlaying && currentIndex > 0) {
           setTimeout(() => {
             const currentCard = document.getElementById(`reader-card-${currentIndex}`);
             if (currentCard) {
