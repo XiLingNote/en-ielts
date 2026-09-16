@@ -1096,7 +1096,15 @@
         </div>
 
         <div class="setting-item">
-          <label class="setting-label">发音人 (Voice)</label>
+          <label class="setting-label">发音音源 (Audio Source)</label>
+          <select id="engine-select">
+            <option value="online">🎙️ 真人原声词典 (推荐·兼容三星/UC/苹果/免装语音包)</option>
+            <option value="tts">🤖 系统本地 TTS 引擎 (完全离线模式)</option>
+          </select>
+        </div>
+
+        <div class="setting-item" id="voice-select-group" style="display:none;">
+          <label class="setting-label">系统 TTS 发音人 (Voice)</label>
           <select id="voice-select">
             <option value="">正在检测发音人...</option>
           </select>
@@ -1229,7 +1237,8 @@
       delaySeconds: 1.5,
       voiceURI: "",
       readChinese: false,
-      keepAwake: true
+      keepAwake: true,
+      engineMode: "online" // "online" (真人词典原声) 或 "tts" (系统本地语音)
     };
 
     // DOM 引用
@@ -1251,6 +1260,8 @@
     const btnRepeat = document.getElementById("btn-repeat");
     const btnReset = document.getElementById("btn-reset");
 
+    const engineSelect = document.getElementById("engine-select");
+    const voiceSelectGroup = document.getElementById("voice-select-group");
     const voiceSelect = document.getElementById("voice-select");
     const rateSlider = document.getElementById("rate-slider");
     const rateValue = document.getElementById("rate-value");
@@ -1387,6 +1398,10 @@
       delayValue.textContent = settings.delaySeconds.toFixed(1) + "s";
       readCnToggle.checked = !!settings.readChinese;
       keepAwakeToggle.checked = settings.keepAwake !== false;
+      if (settings.engineMode) {
+        engineSelect.value = settings.engineMode;
+      }
+      voiceSelectGroup.style.display = settings.engineMode === "tts" ? "flex" : "none";
     }
 
     // 2. 语音引擎加载与适配 (针对 iOS Safari 与 Android Chrome)
@@ -1520,7 +1535,7 @@
     // 单次点读发音工具函数（根据当前是否开启双语伴读发音）
     function speakSingleWord(item) {
       stopSpeaking();
-      speakText(item.word, () => {
+      playWord(item, () => {
         if (settings.readChinese && item.meaning) {
           timerId = setTimeout(() => {
             speakChinese(item.meaning);
@@ -1550,8 +1565,41 @@
       }
     }
 
-    // 4. 朗读核心 (带移动端防回收保护与中英文双语能力)
-    function speakText(text, onEnded) {
+    // 4. 朗读核心 (支持在线真人原声词典与系统本地 TTS 双引擎，完美兼容三星/UC等手机)
+    let wordAudioPlayer = new Audio();
+
+    function playWord(item, onEnded) {
+      if (settings.engineMode === "tts") {
+        speakTextTTS(item.word, onEnded);
+        return;
+      }
+
+      // 🎙️ 模式一：真人词典原声音频流 (免装语音包，三星浏览器/UC浏览器 100% 响声)
+      wordAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(item.word)}&type=2`;
+      wordAudioPlayer.playbackRate = settings.rate;
+      wordCard.classList.add("speaking");
+
+      let isFinished = false;
+      const finish = () => {
+        if (isFinished) return;
+        isFinished = true;
+        wordCard.classList.remove("speaking");
+        if (onEnded) onEnded();
+      };
+
+      wordAudioPlayer.onended = finish;
+      wordAudioPlayer.onerror = () => {
+        console.warn("在线真人音频请求失败，自动无缝降级到本地 TTS 引擎");
+        speakTextTTS(item.word, finish);
+      };
+
+      wordAudioPlayer.play().catch(err => {
+        console.warn("音频自动播放被拦截，降级到 TTS:", err);
+        speakTextTTS(item.word, finish);
+      });
+    }
+
+    function speakTextTTS(text, onEnded) {
       if (!synth) {
         alert("当前设备浏览器不支持语音朗读，请使用 Chrome, Edge 或 Safari 浏览器！");
         return;
@@ -1664,7 +1712,7 @@
       };
 
       // 1. 先朗读英文单词
-      speakText(item.word, () => {
+      playWord(item, () => {
         if (!isPlaying) return;
 
         // 2. 若开启了【同时朗读中文释义】
@@ -1682,6 +1730,10 @@
     function stopSpeaking() {
       if (timerId) clearTimeout(timerId);
       if (synth) synth.cancel();
+      if (wordAudioPlayer) {
+        wordAudioPlayer.pause();
+        wordAudioPlayer.currentTime = 0;
+      }
       wordCard.classList.remove("speaking");
       repeatBadge.style.display = "none";
       window.activeUtterance = null;
@@ -1784,6 +1836,12 @@
     });
 
     // 选项变更
+    engineSelect.addEventListener("change", (e) => {
+      settings.engineMode = e.target.value;
+      voiceSelectGroup.style.display = settings.engineMode === "tts" ? "flex" : "none";
+      localStorage.setItem("english_words_settings", JSON.stringify(settings));
+    });
+
     voiceSelect.addEventListener("change", () => {
       const found = voices.find(v => v.voiceURI === voiceSelect.value);
       if (found) {
