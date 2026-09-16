@@ -300,10 +300,15 @@
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 18px;
-      padding: 18px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .settings-panel.is-collapsed .settings-body {
+      display: none;
     }
 
     .panel-title {
@@ -311,9 +316,106 @@
       font-weight: 700;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
+      padding-bottom: 8px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      padding-bottom: 10px;
+      user-select: none;
+    }
+
+    .settings-panel.is-collapsed .panel-title {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .settings-title-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .settings-summary {
+      font-size: 11px;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .settings-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-lock-settings {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      border-radius: 7px;
+      padding: 4px 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+
+    .btn-lock-settings.locked {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-lock-settings.unlocked {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+
+    .btn-collapse-settings {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px;
+    }
+
+    .settings-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    .settings-panel.is-locked .settings-body {
+      opacity: 0.65;
+    }
+
+    .settings-locked-tip {
+      display: none;
+      font-size: 11.5px;
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px dashed rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 6px 10px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .settings-panel.is-locked .settings-locked-tip {
+      display: block;
     }
 
     .setting-item {
@@ -334,6 +436,35 @@
       font-weight: 600;
     }
 
+    .slider-control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+
+    .step-btn:active {
+      background: var(--accent);
+      color: #0f172a;
+    }
+
     select, input[type="range"] {
       width: 100%;
       background: #0f172a;
@@ -350,6 +481,7 @@
     }
 
     input[type="range"] {
+      flex: 1;
       padding: 0;
       height: 8px;
       border-radius: 4px;
@@ -1239,69 +1371,102 @@
 
     <!-- 侧边栏：设置与快速列表 -->
     <div class="sidebar">
-      <!-- 语音引擎与参数设置 -->
-      <div class="settings-panel">
+      <!-- 语音引擎与参数设置 (防误触设计) -->
+      <div class="settings-panel is-locked" id="settings-panel">
         <div class="panel-title">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          朗读参数
-        </div>
-
-        <div class="setting-item" id="voice-select-group">
-          <div class="setting-label">
-            <span>系统发音人 (Voice)</span>
-            <button id="btn-test-voice" style="background: var(--accent); color: #0f172a; border: none; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700; cursor: pointer;">
-              🔊 试听测试
+          <div class="settings-title-left" id="settings-title-header" title="点击折叠/展开参数面板">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            <span>朗读参数</span>
+            <span class="settings-summary" id="settings-summary">1.0x · 2次 · 1.5s</span>
+          </div>
+          <div class="settings-actions">
+            <button class="btn-lock-settings locked" id="btn-toggle-lock-settings" title="锁定后防止滑动屏幕误触参数">
+              🔒 已锁定
             </button>
-          </div>
-          <select id="voice-select">
-            <option value="AUTO_DEFAULT">⭐️ 系统默认英语发音 (推荐)</option>
-          </select>
-          <div style="font-size:11px; color:var(--accent); margin-top:2px;" id="voice-detected-tip">
-            正在检测已安装的系统英语发音包...
+            <button class="btn-collapse-settings" id="btn-toggle-collapse-settings" title="展开/收起设置">▼</button>
           </div>
         </div>
 
-        <div class="setting-item">
-          <div class="setting-label">
-            <span>语速 (Speed)</span>
-            <span class="value" id="rate-value">1.0x</span>
+        <div class="settings-body" id="settings-body">
+          <div class="settings-locked-tip" id="settings-locked-tip">
+            🔒 参数已锁定防误触，点击右上角【🔒 已锁定】即可解锁修改
           </div>
-          <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.1" value="1.0">
-        </div>
 
-        <div class="setting-item">
-          <div class="setting-label">
-            <span>每个单词朗读次数</span>
-            <span class="value" id="repeat-value">2 次</span>
+          <div class="setting-item" id="voice-select-group">
+            <div class="setting-label">
+              <span>系统发音人 (Voice)</span>
+              <button id="btn-test-voice" style="background: var(--accent); color: #0f172a; border: none; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                🔊 试听测试
+              </button>
+            </div>
+            <select id="voice-select">
+              <option value="AUTO_DEFAULT">⭐️ 系统默认英语发音 (推荐)</option>
+            </select>
+            <div style="font-size:11px; color:var(--accent); margin-top:2px;" id="voice-detected-tip">
+              正在检测已安装的系统英语发音包...
+            </div>
           </div>
-          <input type="range" id="repeat-slider" min="1" max="5" step="1" value="2">
-        </div>
 
-        <div class="setting-item">
-          <div class="setting-label">
-            <span>停顿间隔 (秒)</span>
-            <span class="value" id="delay-value">1.5s</span>
+          <div class="setting-item">
+            <div class="setting-label">
+              <span>语速 (Speed)</span>
+              <span class="value" id="rate-value">1.0x</span>
+            </div>
+            <div class="slider-control-row">
+              <button class="step-btn" id="btn-rate-dec" title="减小语速">-</button>
+              <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+              <button class="step-btn" id="btn-rate-inc" title="增大语速">+</button>
+            </div>
           </div>
-          <input type="range" id="delay-slider" min="0.5" max="5.0" step="0.5" value="1.5">
-        </div>
 
-        <div class="setting-item" style="margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
-            <input type="checkbox" id="read-cn-toggle" style="width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer;">
-            <span>同时朗读中文释义 (双语伴读)</span>
-          </label>
-          <div style="font-size: 11px; color: var(--text-muted); margin-left: 25px; line-height: 1.4; margin-top: 2px;">
-            开启后：读完英文单词 ➔ 紧接着读出中文意思
+          <div class="setting-item">
+            <div class="setting-label">
+              <span>每个单词朗读次数</span>
+              <span class="value" id="repeat-value">2 次</span>
+            </div>
+            <div class="slider-control-row">
+              <button class="step-btn" id="btn-repeat-dec" title="减少次数">-</button>
+              <input type="range" id="repeat-slider" min="1" max="5" step="1" value="2">
+              <button class="step-btn" id="btn-repeat-inc" title="增加次数">+</button>
+            </div>
           </div>
-        </div>
 
-        <div class="setting-item" style="margin-top: 4px; padding-top: 8px;">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
-            <input type="checkbox" id="keep-awake-toggle" checked style="width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer;">
-            <span>播放时屏幕防休眠 (常亮保活)</span>
-          </label>
-          <div style="font-size: 11px; color: var(--text-muted); margin-left: 25px; line-height: 1.4; margin-top: 2px;">
-            开启后播放中防止手机自动黑屏冻结；锁屏支持后台媒体与耳机切词。
+          <div class="setting-item">
+            <div class="setting-label">
+              <span>停顿间隔 (秒)</span>
+              <span class="value" id="delay-value">1.5s</span>
+            </div>
+            <div class="slider-control-row">
+              <button class="step-btn" id="btn-delay-dec" title="减少间隔">-</button>
+              <input type="range" id="delay-slider" min="0.5" max="5.0" step="0.5" value="1.5">
+              <button class="step-btn" id="btn-delay-inc" title="增加间隔">+</button>
+            </div>
+          </div>
+
+          <div class="setting-item" style="margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
+              <input type="checkbox" id="read-cn-toggle" style="width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer;">
+              <span>同时朗读中文释义 (双语伴读)</span>
+            </label>
+            <div style="font-size: 11px; color: var(--text-muted); margin-left: 25px; line-height: 1.4; margin-top: 2px;">
+              开启后：读完英文单词 ➔ 紧接着读出中文意思
+            </div>
+          </div>
+
+          <div class="setting-item" style="margin-top: 4px; padding-top: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
+              <input type="checkbox" id="keep-awake-toggle" checked style="width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer;">
+              <span>播放时屏幕防休眠 (常亮保活)</span>
+            </label>
+            <div style="font-size: 11px; color: var(--text-muted); margin-left: 25px; line-height: 1.4; margin-top: 2px;">
+              开启后播放中防止手机自动黑屏冻结；锁屏支持后台媒体与耳机切词。
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; margin-top:4px;">
+            <button id="btn-restore-default-settings" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline;">
+              ✨ 恢复推荐参数
+            </button>
           </div>
         </div>
       </div>
@@ -1443,6 +1608,56 @@
     const keepAwakeToggle = document.getElementById("keep-awake-toggle");
     const wordListContainer = document.getElementById("word-list-container");
 
+    const settingsPanel = document.getElementById("settings-panel");
+    const settingsSummary = document.getElementById("settings-summary");
+    const btnToggleLockSettings = document.getElementById("btn-toggle-lock-settings");
+    const btnToggleCollapseSettings = document.getElementById("btn-toggle-collapse-settings");
+    const settingsTitleHeader = document.getElementById("settings-title-header");
+    const btnRestoreDefaultSettings = document.getElementById("btn-restore-default-settings");
+    const btnRateDec = document.getElementById("btn-rate-dec");
+    const btnRateInc = document.getElementById("btn-rate-inc");
+    const btnRepeatDec = document.getElementById("btn-repeat-dec");
+    const btnRepeatInc = document.getElementById("btn-repeat-inc");
+    const btnDelayDec = document.getElementById("btn-delay-dec");
+    const btnDelayInc = document.getElementById("btn-delay-inc");
+    let isSettingsLocked = true;
+
+    function updateSettingsSummary() {
+      if (settingsSummary) {
+        settingsSummary.textContent = `${settings.rate.toFixed(1)}x · ${settings.repeatPerWord}次 · ${settings.delaySeconds.toFixed(1)}s${settings.readChinese ? ' · 双语' : ''}`;
+      }
+    }
+
+    function setSettingsLocked(locked) {
+      isSettingsLocked = locked;
+      localStorage.setItem("english_words_settings_locked", isSettingsLocked ? "1" : "0");
+
+      if (settingsPanel) {
+        if (isSettingsLocked) {
+          settingsPanel.classList.add("is-locked");
+        } else {
+          settingsPanel.classList.remove("is-locked");
+        }
+      }
+
+      if (btnToggleLockSettings) {
+        if (isSettingsLocked) {
+          btnToggleLockSettings.textContent = "🔒 已锁定";
+          btnToggleLockSettings.className = "btn-lock-settings locked";
+          btnToggleLockSettings.title = "参数已锁定防误触，点击即可解锁修改";
+        } else {
+          btnToggleLockSettings.textContent = "🔓 点击锁定";
+          btnToggleLockSettings.className = "btn-lock-settings unlocked";
+          btnToggleLockSettings.title = "当前可编辑参数，修改完毕点击即可锁定防误触";
+        }
+      }
+
+      const inputs = settingsPanel ? settingsPanel.querySelectorAll("input, select, .step-btn, #btn-restore-default-settings") : [];
+      inputs.forEach(el => {
+        el.disabled = isSettingsLocked;
+      });
+    }
+
     const importModal = document.getElementById("import-modal");
     const btnOpenImport = document.getElementById("btn-open-import");
     const btnCloseModal = document.getElementById("btn-close-modal");
@@ -1563,6 +1778,13 @@
         } catch (e) {}
       }
 
+      const savedLock = localStorage.getItem("english_words_settings_locked");
+      if (savedLock !== null) {
+        isSettingsLocked = savedLock === "1";
+      } else {
+        isSettingsLocked = true; // 默认开启锁定防误触
+      }
+
       rateSlider.value = settings.rate;
       rateValue.textContent = settings.rate.toFixed(1) + "x";
       repeatSlider.value = settings.repeatPerWord;
@@ -1571,7 +1793,9 @@
       delayValue.textContent = settings.delaySeconds.toFixed(1) + "s";
       readCnToggle.checked = !!settings.readChinese;
       keepAwakeToggle.checked = settings.keepAwake !== false;
-      
+
+      updateSettingsSummary();
+      setSettingsLocked(isSettingsLocked);
     }
 
     // 2. 语音引擎加载与发音人适配 (专为三星 S24 等 Android 手机深度优化)
@@ -2148,27 +2372,82 @@
       });
     }
 
-    rateSlider.addEventListener("input", (e) => {
-      settings.rate = parseFloat(e.target.value);
+    // 参数锁定/解锁切换
+    if (btnToggleLockSettings) {
+      btnToggleLockSettings.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setSettingsLocked(!isSettingsLocked);
+      });
+    }
+
+    // 参数面板折叠/展开切换
+    const toggleSettingsCollapse = () => {
+      if (!settingsPanel) return;
+      settingsPanel.classList.toggle("is-collapsed");
+      if (btnToggleCollapseSettings) {
+        btnToggleCollapseSettings.textContent = settingsPanel.classList.contains("is-collapsed") ? "▲" : "▼";
+      }
+    };
+
+    if (settingsTitleHeader) {
+      settingsTitleHeader.addEventListener("click", toggleSettingsCollapse);
+    }
+    if (btnToggleCollapseSettings) {
+      btnToggleCollapseSettings.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleSettingsCollapse();
+      });
+    }
+
+    // 语速调节
+    function applyRate(val) {
+      settings.rate = Math.max(0.5, Math.min(2.0, Math.round(val * 10) / 10));
+      rateSlider.value = settings.rate;
       rateValue.textContent = settings.rate.toFixed(1) + "x";
       localStorage.setItem("english_words_settings", JSON.stringify(settings));
-    });
+      updateSettingsSummary();
+    }
 
-    repeatSlider.addEventListener("input", (e) => {
-      settings.repeatPerWord = parseInt(e.target.value, 10);
+    rateSlider.addEventListener("input", (e) => {
+      applyRate(parseFloat(e.target.value));
+    });
+    if (btnRateDec) btnRateDec.addEventListener("click", () => applyRate(settings.rate - 0.1));
+    if (btnRateInc) btnRateInc.addEventListener("click", () => applyRate(settings.rate + 0.1));
+
+    // 单词重复朗读次数调节
+    function applyRepeat(val) {
+      settings.repeatPerWord = Math.max(1, Math.min(5, parseInt(val, 10)));
+      repeatSlider.value = settings.repeatPerWord;
       repeatValue.textContent = settings.repeatPerWord + " 次";
       localStorage.setItem("english_words_settings", JSON.stringify(settings));
-    });
+      updateSettingsSummary();
+    }
 
-    delaySlider.addEventListener("input", (e) => {
-      settings.delaySeconds = parseFloat(e.target.value);
+    repeatSlider.addEventListener("input", (e) => {
+      applyRepeat(e.target.value);
+    });
+    if (btnRepeatDec) btnRepeatDec.addEventListener("click", () => applyRepeat(settings.repeatPerWord - 1));
+    if (btnRepeatInc) btnRepeatInc.addEventListener("click", () => applyRepeat(settings.repeatPerWord + 1));
+
+    // 停顿间隔调节
+    function applyDelay(val) {
+      settings.delaySeconds = Math.max(0.5, Math.min(5.0, Math.round(val * 10) / 10));
+      delaySlider.value = settings.delaySeconds;
       delayValue.textContent = settings.delaySeconds.toFixed(1) + "s";
       localStorage.setItem("english_words_settings", JSON.stringify(settings));
+      updateSettingsSummary();
+    }
+
+    delaySlider.addEventListener("input", (e) => {
+      applyDelay(parseFloat(e.target.value));
     });
+    if (btnDelayDec) btnDelayDec.addEventListener("click", () => applyDelay(settings.delaySeconds - 0.5));
+    if (btnDelayInc) btnDelayInc.addEventListener("click", () => applyDelay(settings.delaySeconds + 0.5));
 
     readCnToggle.addEventListener("change", (e) => {
       settings.readChinese = e.target.checked;
       localStorage.setItem("english_words_settings", JSON.stringify(settings));
+      updateSettingsSummary();
     });
 
     keepAwakeToggle.addEventListener("change", (e) => {
@@ -2179,6 +2458,22 @@
         else releaseWakeLock();
       }
     });
+
+    // 恢复推荐参数
+    if (btnRestoreDefaultSettings) {
+      btnRestoreDefaultSettings.addEventListener("click", () => {
+        applyRate(1.0);
+        applyRepeat(2);
+        applyDelay(1.5);
+        readCnToggle.checked = true;
+        settings.readChinese = true;
+        keepAwakeToggle.checked = true;
+        settings.keepAwake = true;
+        localStorage.setItem("english_words_settings", JSON.stringify(settings));
+        updateSettingsSummary();
+        alert("已恢复推荐朗读参数：1.0x 语速 · 读 2 遍 · 间隔 1.5s · 双语伴读开启");
+      });
+    }
 
     // 导入框逻辑
     btnOpenImport.addEventListener("click", () => {
