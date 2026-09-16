@@ -1394,11 +1394,28 @@
     const btnConfirmImport = document.getElementById("btn-confirm-import");
     const importTextarea = document.getElementById("import-textarea");
 
+    // 模拟熄屏口袋模式 DOM 与全局状态（提前声明，杜绝 TDZ 报错）
+    const btnFakeScreenOff = document.getElementById("btn-fake-screen-off");
+    const fakeScreenOverlay = document.getElementById("fake-screen-overlay");
+    const fakeWordText = document.getElementById("fake-word-text");
+    const fakePhoneticText = document.getElementById("fake-phonetic-text");
+    const fakeMeaningText = document.getElementById("fake-meaning-text");
+    let isFakeScreenOn = false;
+
+    function updateFakeScreenDisplay() {
+      if (!isFakeScreenOn || !fakeWordText || words.length === 0) return;
+      const item = words[currentIndex];
+      if (!item) return;
+      fakeWordText.textContent = item.word;
+      if (fakePhoneticText) fakePhoneticText.textContent = item.phonetic || "";
+      if (fakeMeaningText) fakeMeaningText.textContent = item.meaning ? (item.meaning.length > 36 ? item.meaning.substring(0, 36) + "..." : item.meaning) : "";
+    }
+
     // 0. 后台与防息屏常亮驱动 (Screen Wake Lock & MediaSession)
     let wakeLock = null;
 
     function initBackgroundKeeper() {
-      if ("mediaSession" in navigator) {
+      if ("mediaSession" in navigator && navigator.mediaSession) {
         try {
           navigator.mediaSession.setActionHandler("play", () => togglePlay(true));
           navigator.mediaSession.setActionHandler("pause", () => togglePlay(false));
@@ -1441,7 +1458,7 @@
 
     function updateMediaSession() {
       try {
-        if (!("mediaSession" in navigator) || typeof MediaMetadata === "undefined" || words.length === 0) return;
+        if (!("mediaSession" in navigator) || !navigator.mediaSession || typeof MediaMetadata === "undefined" || words.length === 0) return;
         const item = words[currentIndex];
         if (!item) return;
 
@@ -1655,7 +1672,9 @@
       const currentActive = document.getElementById(`list-word-${currentIndex}`);
       if (currentActive) {
         currentActive.classList.add("active");
-        currentActive.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        if (currentActive.scrollIntoView) {
+          currentActive.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
       }
     }
 
@@ -2285,13 +2304,6 @@
     // ==========================================
     // 🕶️ 模拟熄屏模式逻辑 (绕过 UC、微信等锁屏强制杀后台)
     // ==========================================
-    const btnFakeScreenOff = document.getElementById("btn-fake-screen-off");
-    const fakeScreenOverlay = document.getElementById("fake-screen-overlay");
-    const fakeWordText = document.getElementById("fake-word-text");
-    const fakePhoneticText = document.getElementById("fake-phonetic-text");
-    const fakeMeaningText = document.getElementById("fake-meaning-text");
-    let isFakeScreenOn = false;
-
     function enterFakeScreen() {
       isFakeScreenOn = true;
       fakeScreenOverlay.style.display = "flex";
@@ -2322,15 +2334,6 @@
           document.webkitExitFullscreen();
         }
       } catch (e) {}
-    }
-
-    function updateFakeScreenDisplay() {
-      if (!isFakeScreenOn || words.length === 0) return;
-      const item = words[currentIndex];
-      if (!item) return;
-      fakeWordText.textContent = item.word;
-      fakePhoneticText.textContent = item.phonetic || "";
-      fakeMeaningText.textContent = item.meaning ? (item.meaning.length > 36 ? item.meaning.substring(0, 36) + "..." : item.meaning) : "";
     }
 
     if (btnFakeScreenOff) {
