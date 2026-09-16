@@ -1394,11 +1394,8 @@
     const btnConfirmImport = document.getElementById("btn-confirm-import");
     const importTextarea = document.getElementById("import-textarea");
 
-    // 0. 后台与防息屏常亮驱动 (Screen Wake Lock, Silent Audio Keep-Alive & MediaSession)
+    // 0. 后台与防息屏常亮驱动 (Screen Wake Lock & MediaSession)
     let wakeLock = null;
-    // 48 字节微型离线静音 WAV，向移动操作系统获取音频前台焦点，为息屏播放保活，并作为 MediaSession 合法载体
-    const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
-    silentAudio.loop = true;
 
     function initBackgroundKeeper() {
       if ("mediaSession" in navigator) {
@@ -1643,14 +1640,8 @@
         row.addEventListener("click", (e) => {
           if (e.target.classList.contains("side-speak-btn")) {
             e.stopPropagation();
-            jumpToIndex(idx);
-            if (!isPlaying) speakSingleWord(item);
-            return;
           }
-          jumpToIndex(idx);
-          if (!isPlaying) {
-            speakSingleWord(item);
-          }
+          jumpToIndex(idx, true);
         });
         fragment.appendChild(row);
       });
@@ -1668,13 +1659,15 @@
       }
     }
 
-    function jumpToIndex(idx) {
+    function jumpToIndex(idx, shouldSpeak = true) {
       stopSpeaking();
       currentIndex = idx;
       currentRepeatCount = 0;
       renderWord();
       if (isPlaying) {
         playCurrentWord();
+      } else if (shouldSpeak && words[currentIndex]) {
+        speakSingleWord(words[currentIndex]);
       }
     }
 
@@ -1899,19 +1892,15 @@
         pauseIcon.style.display = "block";
         currentRepeatCount = 0;
 
-        // 启动后台静音音频保活并获取系统音频焦点
-        silentAudio.play().catch(() => {});
         acquireWakeLock();
         updateMediaSession();
         updateFakeScreenDisplay();
 
-        // 同步在用户点击手势内启动发音，绝不丢权限
         stopSpeaking();
         playCurrentWord();
       } else {
         playIcon.style.display = "block";
         pauseIcon.style.display = "none";
-        silentAudio.pause();
         releaseWakeLock();
         updateMediaSession();
         stopSpeaking();
@@ -2220,30 +2209,31 @@
         const soundBtn = card.querySelector(".btn-reader-sound");
         soundBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          jumpToIndex(item.originalIndex);
+          document.querySelectorAll(".reader-card").forEach(c => c.classList.remove("playing-active"));
           card.classList.add("playing-active");
-          if (!isPlaying) {
-            speakSingleWord(item);
-          }
+          jumpToIndex(item.originalIndex, true);
         });
 
         // 按钮事件：跳转到伴读卡片播放
         const jumpBtn = card.querySelector(".btn-reader-jump");
         jumpBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          jumpToIndex(item.originalIndex);
           switchView("player");
-          if (!isPlaying) togglePlay(true);
+          jumpToIndex(item.originalIndex, false);
+          if (!isPlaying) {
+            togglePlay(true);
+          } else {
+            stopSpeaking();
+            currentRepeatCount = 0;
+            playCurrentWord();
+          }
         });
 
         // 点击卡片本身：选定并发音
         card.addEventListener("click", () => {
-          jumpToIndex(item.originalIndex);
-          if (!isPlaying) {
-            speakSingleWord(item);
-          }
           document.querySelectorAll(".reader-card").forEach(c => c.classList.remove("playing-active"));
           card.classList.add("playing-active");
+          jumpToIndex(item.originalIndex, true);
         });
 
         fragment.appendChild(card);
