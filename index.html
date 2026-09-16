@@ -1209,26 +1209,18 @@
           朗读参数
         </div>
 
-        <div class="setting-item">
-          <label class="setting-label">发音模式 (Engine)</label>
-          <select id="engine-select">
-            <option value="tts">🤖 手机系统英语语音包 (已安装·离线极速)</option>
-            <option value="online">🎙️ 在线真人词典原声 (备用网络模式)</option>
-          </select>
-        </div>
-
         <div class="setting-item" id="voice-select-group">
           <div class="setting-label">
             <span>系统发音人 (Voice)</span>
-            <button id="btn-test-voice" style="background: var(--accent); color: #0f172a; border: none; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; cursor: pointer;">
-              🔊 试听发音
+            <button id="btn-test-voice" style="background: var(--accent); color: #0f172a; border: none; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700; cursor: pointer;">
+              🔊 试听测试
             </button>
           </div>
           <select id="voice-select">
-            <option value="">系统默认自动选择</option>
+            <option value="AUTO_DEFAULT">⭐️ 系统默认英语发音 (推荐)</option>
           </select>
           <div style="font-size:11px; color:var(--accent); margin-top:2px;" id="voice-detected-tip">
-            已开启系统本地语音包
+            正在检测已安装的系统英语发音包...
           </div>
         </div>
 
@@ -1360,7 +1352,7 @@
       voiceURI: "",
       readChinese: false,
       keepAwake: true,
-      engineMode: "tts" // "online" (真人词典原声) 或 "tts" (系统本地语音)
+       // "online" (真人词典原声) 或 "tts" (系统本地语音)
     };
 
     // DOM 引用
@@ -1382,8 +1374,7 @@
     const btnRepeat = document.getElementById("btn-repeat");
     const btnReset = document.getElementById("btn-reset");
 
-    const engineSelect = document.getElementById("engine-select");
-    const voiceSelectGroup = document.getElementById("voice-select-group");
+    
     const voiceSelect = document.getElementById("voice-select");
     const rateSlider = document.getElementById("rate-slider");
     const rateValue = document.getElementById("rate-value");
@@ -1520,13 +1511,7 @@
       delayValue.textContent = settings.delaySeconds.toFixed(1) + "s";
       readCnToggle.checked = !!settings.readChinese;
       keepAwakeToggle.checked = settings.keepAwake !== false;
-      if (settings.engineMode) {
-        engineSelect.value = settings.engineMode;
-      } else {
-        settings.engineMode = "tts";
-        engineSelect.value = "tts";
-      }
-      voiceSelectGroup.style.display = "flex";
+      
     }
 
     // 2. 语音引擎加载与适配 (针对 iOS Safari 与 Android Chrome)
@@ -1664,18 +1649,6 @@
       wordListContainer.appendChild(fragment);
     }
 
-    // 单次点读发音工具函数（根据当前是否开启双语伴读发音）
-    function speakSingleWord(item) {
-      stopSpeaking();
-      playWord(item, () => {
-        if (settings.readChinese && item.meaning) {
-          timerId = setTimeout(() => {
-            speakChinese(item.meaning);
-          }, 300);
-        }
-      });
-    }
-
     function updateWordListActive() {
       const prevActive = wordListContainer.querySelector(".active");
       if (prevActive) prevActive.classList.remove("active");
@@ -1692,84 +1665,25 @@
       currentIndex = idx;
       currentRepeatCount = 0;
       renderWord();
-      if (isPlaying) {
-        playCurrentWord();
-      }
-    }
-
-    // 4. 朗读核心 (支持在线真人原声词典与系统本地 TTS 双引擎，完美兼容三星/UC等手机)
-    // ==========================================
-    // 🔊 强化版多源发音引擎 (完美适配三星 S24、UC、Chrome、Safari)
-    // ==========================================
-    const coreAudioPlayer = document.getElementById("core-audio-player");
-    let currentPlaySessionId = 0; // 防止异步双重回调重入冲突
-
-    // 核心播放入口 (智能三级容灾：有道原声 -> 百度原声 -> 系统 TTS)
-    function playWord(item, onEnded) {
-      const sessionId = ++currentPlaySessionId;
-      wordCard.classList.add("speaking");
-
-      let finished = false;
-      const done = () => {
-        if (finished || sessionId !== currentPlaySessionId) return;
-        finished = true;
-        wordCard.classList.remove("speaking");
-        if (onEnded) onEnded();
-      };
-
-      // 模式 A：用户明确选择纯本地 TTS
-      if (settings.engineMode === "tts") {
-        speakTextTTS(item.word, done);
-        return;
-      }
-
-      // 模式 B：在线真人词典原声 (优先有道，次选备用源，最后回退 TTS)
-      const encodedWord = encodeURIComponent(item.word.trim());
-      const primaryUrl = `https://dict.youdao.com/dictvoice?audio=${encodedWord}&type=2`;
-      const fallbackUrl = `https://fanyi.baidu.com/gettts?lan=en&text=${encodedWord}&spd=4&source=web`;
-
-      let triedFallback = false;
-
-      coreAudioPlayer.src = primaryUrl;
-      coreAudioPlayer.playbackRate = settings.rate;
-
-      coreAudioPlayer.onended = () => {
-        done();
-      };
-
-      const handleAudioError = () => {
-        if (finished || sessionId !== currentPlaySessionId) return;
-        if (!triedFallback) {
-          triedFallback = true;
-          console.warn("主音源加载异常，尝试备用真人音源...");
-          coreAudioPlayer.src = fallbackUrl;
-          coreAudioPlayer.play().catch(handleAudioError);
-        } else {
-          console.warn("在线音频均受限，无缝切换为系统本地 TTS 朗读...");
-          speakTextTTS(item.word, done);
+      setTimeout(() => {
+        if (isPlaying) {
+          playCurrentWord();
         }
-      };
-
-      coreAudioPlayer.onerror = handleAudioError;
-
-      // 触发播放
-      const playPromise = coreAudioPlayer.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn("音频自动播放被浏览器拦截，转为 TTS 兜底:", err);
-          handleAudioError();
-        });
-      }
+      }, 60);
     }
 
-    // 系统 TTS 朗读核心 (专为三星 S24/Android 深度优化)
-    function speakTextTTS(text, onEnded) {
+    // ==========================================
+    // 🔊 纯净本地系统发音引擎 (针对三星 S24 等 Android 手机深度优化)
+    // ==========================================
+
+    // 核心发音方法：纯净原生 Web Speech API
+    function speakText(text, onEnded) {
       if (!synth) {
         if (onEnded) onEnded();
         return;
       }
 
-      // 唤醒可能处于挂起休眠态的 Android 语音通道
+      // 唤醒处于休眠挂起状态的 Android 音频通道
       if (synth.paused) {
         try { synth.resume(); } catch (e) {}
       }
@@ -1779,18 +1693,18 @@
       utterance.rate = settings.rate;
       utterance.volume = 1.0;
 
-      // 如果选定了具体发音人且有效，则绑定；若是默认选项则不锁死 voice，让手机系统自主调度
+      // 仅在明确选择了特定发音人时绑定；默认时留空让系统底层自行路由，兼容性最强
       if (currentVoice && voiceSelect.value !== "AUTO_DEFAULT") {
         try {
           utterance.voice = currentVoice;
         } catch (e) {}
       }
 
-      window.activeUtterance = utterance;
+      window.activeUtterance = utterance; // 避免移动端 Safari/Chrome 垃圾回收
       wordCard.classList.add("speaking");
 
       let hasFired = false;
-      const finishTTS = () => {
+      const finish = () => {
         if (hasFired) return;
         hasFired = true;
         wordCard.classList.remove("speaking");
@@ -1798,21 +1712,21 @@
         if (onEnded) onEnded();
       };
 
-      utterance.onend = finishTTS;
+      utterance.onend = finish;
       utterance.onerror = (e) => {
-        console.warn("TTS 发音事件异常:", e);
-        finishTTS();
+        console.warn("TTS 朗读遇到异常:", e);
+        finish();
       };
 
       try {
         synth.speak(utterance);
       } catch (e) {
-        console.warn("synth.speak 触发异常:", e);
-        finishTTS();
+        console.warn("synth.speak 异常:", e);
+        finish();
       }
     }
 
-    // 清洗中文释义，使中文朗读干净自然
+    // 清洗中文释义
     function cleanChineseMeaning(meaning) {
       if (!meaning) return "";
       let clean = meaning.replace(/\/.*?\/|\[.*?\]/g, " ").trim();
@@ -1836,28 +1750,55 @@
         return;
       }
 
+      if (synth.paused) {
+        try { synth.resume(); } catch (e) {}
+      }
+
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = "zh-CN";
       utterance.rate = 1.0;
+      utterance.volume = 1.0;
       if (chineseVoice) {
         utterance.voice = chineseVoice;
       }
 
       window.activeUtterance = utterance;
 
-      utterance.onend = () => {
+      let hasFired = false;
+      const finish = () => {
+        if (hasFired) return;
+        hasFired = true;
         window.activeUtterance = null;
         if (onEnded) onEnded();
       };
 
-      utterance.onerror = () => {
-        window.activeUtterance = null;
-        if (onEnded) onEnded();
-      };
+      utterance.onend = finish;
+      utterance.onerror = finish;
 
-      synth.speak(utterance);
+      try {
+        synth.speak(utterance);
+      } catch (e) {
+        finish();
+      }
     }
 
+    // 单次点读（给列表、卡片以及暂停态点击发音使用）
+    function speakSingleWord(item) {
+      if (!item) return;
+      stopSpeaking();
+      // 关键延迟 60ms：给浏览器底层音频通道充分时间完成 cancel 清理，绝不吞音
+      setTimeout(() => {
+        speakText(item.word, () => {
+          if (settings.readChinese && item.meaning) {
+            timerId = setTimeout(() => {
+              speakChinese(item.meaning);
+            }, 280);
+          }
+        });
+      }, 60);
+    }
+
+    // 播放主流程
     function playCurrentWord() {
       if (!isPlaying || words.length === 0) return;
 
@@ -1867,7 +1808,6 @@
 
       const item = words[currentIndex];
 
-      // 处理本词朗读完毕后的流转调度
       const proceedFlow = () => {
         if (!isPlaying) return;
 
@@ -1892,29 +1832,29 @@
         }
       };
 
-      // 1. 先朗读英文单词
-      playWord(item, () => {
+      // 朗读当前英文单词
+      speakText(item.word, () => {
         if (!isPlaying) return;
 
-        // 2. 若开启了【同时朗读中文释义】
         if (settings.readChinese && item.meaning) {
           timerId = setTimeout(() => {
             if (!isPlaying) return;
             speakChinese(item.meaning, proceedFlow);
-          }, 350);
+          }, 300);
         } else {
           proceedFlow();
         }
       });
     }
 
+    // 停止发音与清理
     function stopSpeaking() {
-      currentPlaySessionId++; // 废弃先前的一切异步回调
-      if (timerId) clearTimeout(timerId);
-      if (synth) synth.cancel();
-      if (coreAudioPlayer) {
-        coreAudioPlayer.pause();
-        coreAudioPlayer.currentTime = 0;
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      if (synth) {
+        try { synth.cancel(); } catch (e) {}
       }
       wordCard.classList.remove("speaking");
       repeatBadge.style.display = "none";
@@ -1976,12 +1916,14 @@
     btnRepeat.addEventListener("click", () => {
       stopSpeaking();
       currentRepeatCount = 0;
-      if (isPlaying) {
-        playCurrentWord();
-      } else {
-        const item = words[currentIndex];
-        speakText(item.word);
-      }
+      // 延迟 60ms，确保旧音频通道完全释放，新发音必定出声
+      setTimeout(() => {
+        if (isPlaying) {
+          playCurrentWord();
+        } else {
+          speakSingleWord(words[currentIndex]);
+        }
+      }, 60);
     });
 
     btnReset.addEventListener("click", () => {
@@ -2018,11 +1960,7 @@
     });
 
     // 选项变更
-    engineSelect.addEventListener("change", (e) => {
-      settings.engineMode = e.target.value;
-      voiceSelectGroup.style.display = settings.engineMode === "tts" ? "flex" : "none";
-      localStorage.setItem("english_words_settings", JSON.stringify(settings));
-    });
+    
 
     voiceSelect.addEventListener("change", () => {
       if (voiceSelect.value === "AUTO_DEFAULT") {
@@ -2043,7 +1981,7 @@
     if (btnTestVoice) {
       btnTestVoice.addEventListener("click", () => {
         const curWord = words[currentIndex] ? words[currentIndex].word : "Hello";
-        speakTextTTS(`Hello, ${curWord}`, () => {
+        speakText(`Hello, ${curWord}`, () => {
           console.log("试听完成");
         });
       });
@@ -2411,8 +2349,7 @@
   </div>
 
 
-  <!-- 专为三星等移动端浏览器配置的 DOM Audio 播放器 (带 playsinline) -->
-  <audio id="core-audio-player" preload="auto" playsinline style="display:none;"></audio>
+
 
 </body>
 </html>
