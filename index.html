@@ -733,6 +733,7 @@
       align-items: flex-start;
       gap: 14px;
       transition: border-color 0.2s, transform 0.15s;
+      scroll-margin-top: 210px;
     }
 
     .reader-card:hover {
@@ -1007,7 +1008,9 @@
       max-width: 100% !important;
       width: 100% !important;
       min-width: 0 !important;
-      padding: 12px !important;
+      padding: 10px 12px !important;
+      top: calc(96px + env(safe-area-inset-top, 0px)) !important;
+      border-radius: 12px !important;
     }
 
     .alphabet-nav {
@@ -1023,6 +1026,7 @@
       width: 100% !important;
       min-width: 0 !important;
       overflow-x: hidden !important;
+      padding-top: 6px !important;
     }
 
     .reader-card {
@@ -1031,6 +1035,7 @@
       min-width: 0 !important;
       word-break: break-word !important;
       overflow-wrap: anywhere !important;
+      scroll-margin-top: calc(220px + env(safe-area-inset-top, 0px)) !important;
     }
 
     .reader-card-info {
@@ -1048,11 +1053,16 @@
     }
 
     @media (max-width: 640px) {
+      .reader-toolbar {
+        top: calc(98px + env(safe-area-inset-top, 0px)) !important;
+      }
+
       .reader-card {
         flex-direction: column !important;
         align-items: stretch !important;
         padding: 12px 14px !important;
         gap: 10px !important;
+        scroll-margin-top: calc(235px + env(safe-area-inset-top, 0px)) !important;
       }
 
       .reader-card-actions {
@@ -2144,13 +2154,19 @@
         viewPlayer.classList.add("hidden");
         viewReader.classList.add("active");
         renderReaderView();
-        // 自动将当前正在学习的单词滚动到视野内
-        setTimeout(() => {
-          const currentCard = document.getElementById(`reader-card-${currentIndex}`);
-          if (currentCard) {
-            currentCard.scrollIntoView({ block: "center", behavior: "smooth" });
-          }
-        }, 100);
+
+        // 切换到通读词书时，立即重置滚动条到顶部，彻底防止因播放器界面的残留滚动偏移导致第一个卡片被吸顶栏遮盖
+        window.scrollTo({ top: 0, behavior: "instant" });
+
+        // 若当前播放索引大于0，则延时平滑滚动对齐到当前单词
+        if (currentIndex > 0) {
+          setTimeout(() => {
+            const currentCard = document.getElementById(`reader-card-${currentIndex}`);
+            if (currentCard) {
+              currentCard.scrollIntoView({ block: "center", behavior: "smooth" });
+            }
+          }, 120);
+        }
       }
     }
 
@@ -2181,6 +2197,7 @@
           btn.classList.add("active");
           readerRenderLimit = 150;
           renderReaderView();
+          window.scrollTo({ top: 0, behavior: "smooth" });
         });
         alphabetNav.appendChild(btn);
       });
@@ -2308,6 +2325,7 @@
       readerSearchClear.style.display = "none";
       readerRenderLimit = 150;
       renderReaderView();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
     loadSavedData();
