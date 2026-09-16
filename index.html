@@ -979,6 +979,120 @@
       border-radius: 20px;
     }
 
+  
+    /* 📱 三星 S24 等窄屏移动端超强防溢出 (彻底杜绝横向滚动条) */
+    html, body {
+      overflow-x: hidden !important;
+      max-width: 100vw !important;
+      width: 100% !important;
+    }
+
+    .container {
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      overflow-x: hidden !important;
+      padding: 12px 10px 40px 10px !important;
+    }
+
+    #view-player, #view-reader {
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      overflow-x: hidden !important;
+    }
+
+    .reader-toolbar {
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      padding: 12px !important;
+    }
+
+    .alphabet-nav {
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    .reader-list {
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      overflow-x: hidden !important;
+    }
+
+    .reader-card {
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      word-break: break-word !important;
+      overflow-wrap: anywhere !important;
+    }
+
+    .reader-card-info {
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    .reader-card-meaning {
+      white-space: normal !important;
+      word-break: break-word !important;
+      overflow-wrap: anywhere !important;
+      max-width: 100% !important;
+      line-height: 1.55 !important;
+    }
+
+    @media (max-width: 640px) {
+      .reader-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 12px 14px !important;
+        gap: 10px !important;
+      }
+
+      .reader-card-actions {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        padding-top: 8px !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+      }
+
+      .reader-search-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+      }
+
+      .reader-stats {
+        text-align: right !important;
+        font-size: 11px !important;
+      }
+
+      .current-word {
+        font-size: clamp(26px, 8.5vw, 42px) !important;
+      }
+
+      .word-meaning {
+        font-size: 14px !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+      }
+
+      header {
+        padding: 10px 12px !important;
+      }
+
+      .tab-btn {
+        padding: 5px 10px !important;
+        font-size: 12px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1566,69 +1680,117 @@
     }
 
     // 4. 朗读核心 (支持在线真人原声词典与系统本地 TTS 双引擎，完美兼容三星/UC等手机)
-    let wordAudioPlayer = new Audio();
+    // ==========================================
+    // 🔊 强化版多源发音引擎 (完美适配三星 S24、UC、Chrome、Safari)
+    // ==========================================
+    const coreAudioPlayer = document.getElementById("core-audio-player");
+    let currentPlaySessionId = 0; // 防止异步双重回调重入冲突
 
+    // 核心播放入口 (智能三级容灾：有道原声 -> 百度原声 -> 系统 TTS)
     function playWord(item, onEnded) {
-      if (settings.engineMode === "tts") {
-        speakTextTTS(item.word, onEnded);
-        return;
-      }
-
-      // 🎙️ 模式一：真人词典原声音频流 (免装语音包，三星浏览器/UC浏览器 100% 响声)
-      wordAudioPlayer.src = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(item.word)}&type=2`;
-      wordAudioPlayer.playbackRate = settings.rate;
+      const sessionId = ++currentPlaySessionId;
       wordCard.classList.add("speaking");
 
-      let isFinished = false;
-      const finish = () => {
-        if (isFinished) return;
-        isFinished = true;
+      let finished = false;
+      const done = () => {
+        if (finished || sessionId !== currentPlaySessionId) return;
+        finished = true;
         wordCard.classList.remove("speaking");
         if (onEnded) onEnded();
       };
 
-      wordAudioPlayer.onended = finish;
-      wordAudioPlayer.onerror = () => {
-        console.warn("在线真人音频请求失败，自动无缝降级到本地 TTS 引擎");
-        speakTextTTS(item.word, finish);
-      };
-
-      wordAudioPlayer.play().catch(err => {
-        console.warn("音频自动播放被拦截，降级到 TTS:", err);
-        speakTextTTS(item.word, finish);
-      });
-    }
-
-    function speakTextTTS(text, onEnded) {
-      if (!synth) {
-        alert("当前设备浏览器不支持语音朗读，请使用 Chrome, Edge 或 Safari 浏览器！");
+      // 模式 A：用户明确选择纯本地 TTS
+      if (settings.engineMode === "tts") {
+        speakTextTTS(item.word, done);
         return;
       }
 
-      synth.cancel();
+      // 模式 B：在线真人词典原声 (优先有道，次选备用源，最后回退 TTS)
+      const encodedWord = encodeURIComponent(item.word.trim());
+      const primaryUrl = `https://dict.youdao.com/dictvoice?audio=${encodedWord}&type=2`;
+      const fallbackUrl = `https://fanyi.baidu.com/gettts?lan=en&text=${encodedWord}&spd=4&source=web`;
+
+      let triedFallback = false;
+
+      coreAudioPlayer.src = primaryUrl;
+      coreAudioPlayer.playbackRate = settings.rate;
+
+      coreAudioPlayer.onended = () => {
+        done();
+      };
+
+      const handleAudioError = () => {
+        if (finished || sessionId !== currentPlaySessionId) return;
+        if (!triedFallback) {
+          triedFallback = true;
+          console.warn("主音源加载异常，尝试备用真人音源...");
+          coreAudioPlayer.src = fallbackUrl;
+          coreAudioPlayer.play().catch(handleAudioError);
+        } else {
+          console.warn("在线音频均受限，无缝切换为系统本地 TTS 朗读...");
+          speakTextTTS(item.word, done);
+        }
+      };
+
+      coreAudioPlayer.onerror = handleAudioError;
+
+      // 触发播放
+      const playPromise = coreAudioPlayer.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn("音频自动播放被浏览器拦截，转为 TTS 兜底:", err);
+          handleAudioError();
+        });
+      }
+    }
+
+    // 系统 TTS 朗读核心 (专为 Android/三星 S24 优化，绝不在 speak 前立即 cancel)
+    function speakTextTTS(text, onEnded) {
+      if (!synth) {
+        if (onEnded) onEnded();
+        return;
+      }
+
+      // 仅在已有发音卡住时才 cancel，避免 Chromium/Android 立即取消 upcoming speak 的 bug
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+      }
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = settings.rate;
-      if (currentVoice) {
-        utterance.voice = currentVoice;
+
+      // 针对三星 S24：优先匹配真实有效的声音，若无或匹配有风险，直接使用默认 en-US
+      if (currentVoice && currentVoice.lang && currentVoice.lang.toLowerCase().startsWith("en")) {
+        try {
+          utterance.voice = currentVoice;
+        } catch (e) {}
       }
 
-      window.activeUtterance = utterance; // 防止 Safari 垃圾回收导致发音被切断
+      window.activeUtterance = utterance; // 避免移动端垃圾回收
       wordCard.classList.add("speaking");
 
-      utterance.onend = () => {
+      let hasFired = false;
+      const finishTTS = () => {
+        if (hasFired) return;
+        hasFired = true;
         wordCard.classList.remove("speaking");
         window.activeUtterance = null;
         if (onEnded) onEnded();
       };
 
+      utterance.onend = finishTTS;
       utterance.onerror = (e) => {
-        wordCard.classList.remove("speaking");
-        window.activeUtterance = null;
-        if (onEnded) onEnded();
+        console.warn("TTS 发音遇到错误:", e);
+        finishTTS();
       };
 
-      synth.speak(utterance);
+      try {
+        synth.speak(utterance);
+      } catch (e) {
+        console.warn("synth.speak 抛出异常:", e);
+        finishTTS();
+      }
     }
 
     // 清洗中文释义，使中文朗读干净自然
@@ -1728,11 +1890,12 @@
     }
 
     function stopSpeaking() {
+      currentPlaySessionId++; // 废弃先前的一切异步回调
       if (timerId) clearTimeout(timerId);
       if (synth) synth.cancel();
-      if (wordAudioPlayer) {
-        wordAudioPlayer.pause();
-        wordAudioPlayer.currentTime = 0;
+      if (coreAudioPlayer) {
+        coreAudioPlayer.pause();
+        coreAudioPlayer.currentTime = 0;
       }
       wordCard.classList.remove("speaking");
       repeatBadge.style.display = "none";
@@ -2211,6 +2374,10 @@
       👆 双击或长按任意位置退出熄屏
     </div>
   </div>
+
+
+  <!-- 专为三星等移动端浏览器配置的 DOM Audio 播放器 (带 playsinline) -->
+  <audio id="core-audio-player" preload="auto" playsinline style="display:none;"></audio>
 
 </body>
 </html>
