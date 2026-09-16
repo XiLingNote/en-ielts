@@ -116,6 +116,7 @@
       min-height: 260px;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
       transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      cursor: pointer;
     }
 
     .word-card.speaking {
@@ -1393,19 +1394,26 @@
     const btnConfirmImport = document.getElementById("btn-confirm-import");
     const importTextarea = document.getElementById("import-textarea");
 
-    // 0. 后台与防息屏常亮驱动 (Screen Wake Lock & MediaSession)
+    // 0. 后台与防息屏常亮驱动 (Screen Wake Lock, Silent Audio Keep-Alive & MediaSession)
     let wakeLock = null;
+    // 48 字节微型离线静音 WAV，向移动操作系统获取音频前台焦点，为息屏播放保活，并作为 MediaSession 合法载体
+    const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+    silentAudio.loop = true;
 
     function initBackgroundKeeper() {
       if ("mediaSession" in navigator) {
-        navigator.mediaSession.setActionHandler("play", () => togglePlay(true));
-        navigator.mediaSession.setActionHandler("pause", () => togglePlay(false));
-        navigator.mediaSession.setActionHandler("previoustrack", () => {
-          if (currentIndex > 0) jumpToIndex(currentIndex - 1);
-        });
-        navigator.mediaSession.setActionHandler("nexttrack", () => {
-          if (currentIndex < words.length - 1) jumpToIndex(currentIndex + 1);
-        });
+        try {
+          navigator.mediaSession.setActionHandler("play", () => togglePlay(true));
+          navigator.mediaSession.setActionHandler("pause", () => togglePlay(false));
+          navigator.mediaSession.setActionHandler("previoustrack", () => {
+            if (currentIndex > 0) jumpToIndex(currentIndex - 1);
+          });
+          navigator.mediaSession.setActionHandler("nexttrack", () => {
+            if (currentIndex < words.length - 1) jumpToIndex(currentIndex + 1);
+          });
+        } catch (e) {
+          console.warn("mediaSession 注册异常:", e);
+        }
       }
     }
 
@@ -1435,16 +1443,22 @@
     });
 
     function updateMediaSession() {
-      if (!("mediaSession" in navigator) || words.length === 0) return;
-      const item = words[currentIndex];
-      if (!item) return;
+      try {
+        if (!("mediaSession" in navigator) || typeof MediaMetadata === "undefined" || words.length === 0) return;
+        const item = words[currentIndex];
+        if (!item) return;
 
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${item.word} ${item.phonetic || ""}`,
-        artist: item.meaning || "雅思核心词汇 2683",
-        album: `当前进度: ${currentIndex + 1} / ${words.length}`
-      });
-      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: `${item.word} ${item.phonetic || ""}`,
+          artist: item.meaning || "雅思核心词汇 2683",
+          album: `当前进度: ${currentIndex + 1} / ${words.length}`
+        });
+        if (navigator.mediaSession.playbackState !== undefined) {
+          navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+        }
+      } catch (e) {
+        // 安全捕获任何可能的媒体会话异常，绝不打断播放
+      }
     }
 
     // 1. 本地存储还原
@@ -1490,14 +1504,12 @@
       
     }
 
-    // 2. 语音引擎加载与适配 (针对 iOS Safari 与 Android Chrome)
+    // 2. 语音引擎加载与发音人适配 (专为三星 S24 等 Android 手机深度优化)
     function initVoices() {
       if (!synth) return;
-      const allVoices = synth.getVoices();
-      voices = allVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith("en"));
-      if (voices.length === 0) {
-        voices = allVoices;
-      }
+      const allVoices = synth.getVoices() || [];
+      const enVoices = allVoices.filter(v => v.lang && (v.lang.toLowerCase().startsWith("en") || v.lang.toLowerCase().includes("en")));
+      voices = enVoices.length > 0 ? enVoices : allVoices;
 
       // 自动寻找中文发音人
       const zhVoices = allVoices.filter(v => v.lang && (v.lang.toLowerCase().startsWith("zh") || v.lang.toLowerCase().startsWith("cmn")));
@@ -1511,41 +1523,62 @@
       ) || zhVoices[0] || null;
 
       voiceSelect.innerHTML = "";
-      
-      // 添加“系统默认”项作为最稳妥的兼容选项
-      const defaultOpt = document.createElement("option");
-      defaultOpt.value = "AUTO_DEFAULT";
-      defaultOpt.textContent = "⭐️ 系统默认英语发音 (最稳)";
-      voiceSelect.appendChild(defaultOpt);
 
-      let foundIdx = -1;
-      voices.forEach((voice, index) => {
-        const option = document.createElement("option");
-        option.value = voice.voiceURI;
-        option.textContent = `${voice.name} (${voice.lang})`;
+      if (voices.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "系统默认英语发音";
+        voiceSelect.appendChild(opt);
+        currentVoice = null;
+        return;
+      }
 
-        if (settings.voiceURI && voice.voiceURI === settings.voiceURI) {
-          foundIdx = index + 1;
-        } else if (!settings.voiceURI && foundIdx === -1 && (
-          voice.lang === "en-US" || voice.name.includes("Samsung") || voice.name.includes("Google")
-        )) {
-          foundIdx = index + 1;
+      // 智能评选最佳发音人：三星原生英语包 > 美音 en-US > Google 英语 > 其它
+      let bestVoice = voices[0];
+      let bestScore = -1;
+
+      voices.forEach((voice) => {
+        let score = 0;
+        const name = (voice.name || "").toLowerCase();
+        const lang = (voice.lang || "").toLowerCase();
+
+        if (name.includes("samsung")) score += 20;
+        if (lang === "en-us" || lang === "en_us") score += 15;
+        else if (lang.startsWith("en")) score += 10;
+        if (name.includes("google") || name.includes("natural")) score += 5;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestVoice = voice;
         }
 
+        const option = document.createElement("option");
+        option.value = voice.voiceURI || voice.name;
+        let tag = "";
+        if (name.includes("samsung")) tag = "⭐️ [三星原厂] ";
+        else if (lang.includes("us")) tag = "✨ [推荐美音] ";
+        option.textContent = `${tag}${voice.name} (${voice.lang})`;
         voiceSelect.appendChild(option);
       });
 
-      if (foundIdx > 0 && foundIdx < voiceSelect.options.length) {
-        voiceSelect.selectedIndex = foundIdx;
-        currentVoice = voices[foundIdx - 1];
-      } else {
-        voiceSelect.selectedIndex = 0;
-        currentVoice = null; // 为 null 时浏览器自动指派系统活跃语音包
+      // 优先恢复用户保存的偏好，若无则自动绑定最佳发音人
+      let targetVoice = null;
+      if (settings.voiceURI) {
+        targetVoice = voices.find(v => (v.voiceURI && v.voiceURI === settings.voiceURI) || v.name === settings.voiceURI);
+      }
+      if (!targetVoice) {
+        targetVoice = bestVoice;
+      }
+
+      currentVoice = targetVoice;
+      if (currentVoice) {
+        settings.voiceURI = currentVoice.voiceURI || currentVoice.name;
+        voiceSelect.value = settings.voiceURI;
       }
 
       const tipEl = document.getElementById("voice-detected-tip");
       if (tipEl) {
-        tipEl.textContent = `已识别到 ${voices.length} 个英语发音包`;
+        tipEl.textContent = `已识别到 ${voices.length} 个英语发音包 (当前: ${currentVoice ? currentVoice.name : "系统指定"})`;
       }
     }
 
@@ -1553,7 +1586,8 @@
       if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = initVoices;
       }
-      setTimeout(initVoices, 200);
+      setTimeout(initVoices, 100);
+      setTimeout(initVoices, 500);
     }
 
     // 3. 页面渲染
@@ -1610,13 +1644,11 @@
           if (e.target.classList.contains("side-speak-btn")) {
             e.stopPropagation();
             jumpToIndex(idx);
-            speakSingleWord(item);
+            if (!isPlaying) speakSingleWord(item);
             return;
           }
           jumpToIndex(idx);
-          if (isPlaying) {
-            playCurrentWord();
-          } else {
+          if (!isPlaying) {
             speakSingleWord(item);
           }
         });
@@ -1641,18 +1673,16 @@
       currentIndex = idx;
       currentRepeatCount = 0;
       renderWord();
-      setTimeout(() => {
-        if (isPlaying) {
-          playCurrentWord();
-        }
-      }, 60);
+      if (isPlaying) {
+        playCurrentWord();
+      }
     }
 
     // ==========================================
     // 🔊 纯净本地系统发音引擎 (针对三星 S24 等 Android 手机深度优化)
     // ==========================================
 
-    // 核心发音方法：纯净原生 Web Speech API
+    // 核心发音方法：纯净原生 Web Speech API (针对三星 S24 等 Android 手机深度优化)
     function speakText(text, onEnded) {
       if (!synth) {
         if (onEnded) onEnded();
@@ -1665,24 +1695,28 @@
       }
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US";
-      utterance.rate = settings.rate;
+      if (currentVoice) {
+        utterance.voice = currentVoice;
+        utterance.lang = currentVoice.lang || "en-US";
+      } else {
+        utterance.lang = "en-US";
+      }
+      utterance.rate = settings.rate || 1.0;
       utterance.volume = 1.0;
 
-      // 仅在明确选择了特定发音人时绑定；默认时留空让系统底层自行路由，兼容性最强
-      if (currentVoice && voiceSelect.value !== "AUTO_DEFAULT") {
-        try {
-          utterance.voice = currentVoice;
-        } catch (e) {}
-      }
-
-      window.activeUtterance = utterance; // 避免移动端 Safari/Chrome 垃圾回收
+      window.activeUtterance = utterance; // 避免移动端 Safari/Chrome 垃圾回收导致吞音
       wordCard.classList.add("speaking");
 
       let hasFired = false;
+      let safetyTimer = null;
+
       const finish = () => {
         if (hasFired) return;
         hasFired = true;
+        if (safetyTimer) {
+          clearTimeout(safetyTimer);
+          safetyTimer = null;
+        }
         wordCard.classList.remove("speaking");
         window.activeUtterance = null;
         if (onEnded) onEnded();
@@ -1693,6 +1727,14 @@
         console.warn("TTS 朗读遇到异常:", e);
         finish();
       };
+
+      // 移动端安全兜底定时器：针对 Android TTS 偶尔丢失 onend 回调导致停滞的 Bug
+      const timeoutMs = Math.max(2500, Math.round((text.length * 300 + 1200) / (settings.rate || 1.0)));
+      safetyTimer = setTimeout(() => {
+        if (!hasFired) {
+          finish();
+        }
+      }, timeoutMs);
 
       try {
         synth.speak(utterance);
@@ -1741,15 +1783,28 @@
       window.activeUtterance = utterance;
 
       let hasFired = false;
+      let safetyTimer = null;
+
       const finish = () => {
         if (hasFired) return;
         hasFired = true;
+        if (safetyTimer) {
+          clearTimeout(safetyTimer);
+          safetyTimer = null;
+        }
         window.activeUtterance = null;
         if (onEnded) onEnded();
       };
 
       utterance.onend = finish;
       utterance.onerror = finish;
+
+      const timeoutMs = Math.max(3000, cleanText.length * 350 + 1500);
+      safetyTimer = setTimeout(() => {
+        if (!hasFired) {
+          finish();
+        }
+      }, timeoutMs);
 
       try {
         synth.speak(utterance);
@@ -1758,20 +1813,17 @@
       }
     }
 
-    // 单次点读（给列表、卡片以及暂停态点击发音使用）
+    // 单次点读（给列表、卡片以及暂停态点击发音使用，保持同步手势激活）
     function speakSingleWord(item) {
       if (!item) return;
       stopSpeaking();
-      // 关键延迟 60ms：给浏览器底层音频通道充分时间完成 cancel 清理，绝不吞音
-      setTimeout(() => {
-        speakText(item.word, () => {
-          if (settings.readChinese && item.meaning) {
-            timerId = setTimeout(() => {
-              speakChinese(item.meaning);
-            }, 280);
-          }
-        });
-      }, 60);
+      speakText(item.word, () => {
+        if (settings.readChinese && item.meaning) {
+          timerId = setTimeout(() => {
+            speakChinese(item.meaning);
+          }, 250);
+        }
+      });
     }
 
     // 播放主流程
@@ -1816,7 +1868,7 @@
           timerId = setTimeout(() => {
             if (!isPlaying) return;
             speakChinese(item.meaning, proceedFlow);
-          }, 300);
+          }, 250);
         } else {
           proceedFlow();
         }
@@ -1831,6 +1883,7 @@
       }
       if (synth) {
         try { synth.cancel(); } catch (e) {}
+        try { synth.resume(); } catch (e) {}
       }
       wordCard.classList.remove("speaking");
       repeatBadge.style.display = "none";
@@ -1845,19 +1898,20 @@
         playIcon.style.display = "none";
         pauseIcon.style.display = "block";
         currentRepeatCount = 0;
+
+        // 启动后台静音音频保活并获取系统音频焦点
+        silentAudio.play().catch(() => {});
         acquireWakeLock();
         updateMediaSession();
         updateFakeScreenDisplay();
+
+        // 同步在用户点击手势内启动发音，绝不丢权限
         stopSpeaking();
-        // 延迟 60ms 确保音频通道复位，与“重读”完全对齐，确保正常播放 100% 响声
-        setTimeout(() => {
-          if (isPlaying) {
-            playCurrentWord();
-          }
-        }, 60);
+        playCurrentWord();
       } else {
         playIcon.style.display = "block";
         pauseIcon.style.display = "none";
+        silentAudio.pause();
         releaseWakeLock();
         updateMediaSession();
         stopSpeaking();
@@ -1896,17 +1950,19 @@
       if (currentIndex < words.length - 1) jumpToIndex(currentIndex + 1);
     });
 
+    // 点击大卡片直接触发重读/发音
+    wordCard.addEventListener("click", () => {
+      btnRepeat.click();
+    });
+
     btnRepeat.addEventListener("click", () => {
       stopSpeaking();
       currentRepeatCount = 0;
-      // 延迟 60ms，确保旧音频通道完全释放，新发音必定出声
-      setTimeout(() => {
-        if (isPlaying) {
-          playCurrentWord();
-        } else {
-          speakSingleWord(words[currentIndex]);
-        }
-      }, 60);
+      if (isPlaying) {
+        playCurrentWord();
+      } else {
+        speakSingleWord(words[currentIndex]);
+      }
     });
 
     btnReset.addEventListener("click", () => {
@@ -1943,30 +1999,24 @@
     });
 
     // 选项变更
-    
-
     voiceSelect.addEventListener("change", () => {
-      if (voiceSelect.value === "AUTO_DEFAULT") {
-        currentVoice = null;
-        settings.voiceURI = "";
-      } else {
-        const found = voices.find(v => v.voiceURI === voiceSelect.value);
-        if (found) {
-          currentVoice = found;
-          settings.voiceURI = found.voiceURI;
-        }
+      const found = voices.find(v => (v.voiceURI && v.voiceURI === voiceSelect.value) || v.name === voiceSelect.value);
+      if (found) {
+        currentVoice = found;
+        settings.voiceURI = found.voiceURI || found.name;
+        localStorage.setItem("english_words_settings", JSON.stringify(settings));
+        const tipEl = document.getElementById("voice-detected-tip");
+        if (tipEl) tipEl.textContent = `当前发音人: ${currentVoice.name} (${currentVoice.lang})`;
       }
-      localStorage.setItem("english_words_settings", JSON.stringify(settings));
     });
 
     // 试听测试发音
     const btnTestVoice = document.getElementById("btn-test-voice");
     if (btnTestVoice) {
       btnTestVoice.addEventListener("click", () => {
-        const curWord = words[currentIndex] ? words[currentIndex].word : "Hello";
-        speakText(`Hello, ${curWord}`, () => {
-          console.log("试听完成");
-        });
+        const curWord = words[currentIndex] ? words[currentIndex].word : "accept";
+        stopSpeaking();
+        speakText(curWord);
       });
     }
 
@@ -2172,7 +2222,9 @@
           e.stopPropagation();
           jumpToIndex(item.originalIndex);
           card.classList.add("playing-active");
-          speakSingleWord(item);
+          if (!isPlaying) {
+            speakSingleWord(item);
+          }
         });
 
         // 按钮事件：跳转到伴读卡片播放
@@ -2187,7 +2239,9 @@
         // 点击卡片本身：选定并发音
         card.addEventListener("click", () => {
           jumpToIndex(item.originalIndex);
-          speakSingleWord(item);
+          if (!isPlaying) {
+            speakSingleWord(item);
+          }
           document.querySelectorAll(".reader-card").forEach(c => c.classList.remove("playing-active"));
           card.classList.add("playing-active");
         });
