@@ -154,13 +154,6 @@ function renderCard(item, index, highlightKeyword = '') {
   return [lineTop, lineWord, lineMeaning, lineBottom].join('\n');
 }
 
-// 单词发音 (Windows 原生 SpeechSynthesizer)
-function speakWord(word) {
-  if (process.platform === 'win32') {
-    const safeWord = word.replace(/'/g, "''");
-    exec(`powershell -NoProfile -Command "(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('${safeWord}')"`, () => {});
-  }
-}
 
 // -------------------------------------------------------------
 // 命令行非交互快捷打印
@@ -243,7 +236,7 @@ function displayCurrentPage(message = '', searchKeyword = '') {
       initialWelcome = '';
     }
     console.log(
-      `${c.dim}[Enter:next] [b:prev] [:a~:z:group] [:num:offset] [/key:grep] [s:ping] [m:mode] [q:exit]${c.reset}`
+      `${c.dim}[Enter:next] [b:prev] [:a~:z:group] [:num:offset] [/key:grep] [m:mode] [q:exit]${c.reset}`
     );
   } else {
     // 全景卡片模式
@@ -271,7 +264,6 @@ function displayCurrentPage(message = '', searchKeyword = '') {
       `[${c.brightGreen}:序号${c.reset}:跳词] ` +
       `[${c.brightGreen}/词${c.reset}:搜索] ` +
       `[${c.brightGreen}m${c.reset}:切模式] ` +
-      `[${c.brightGreen}s${c.reset}:朗读] ` +
       `[${c.brightGreen}q${c.reset}:退出]`
     );
   }
@@ -327,10 +319,6 @@ rl.on('line', (line) => {
       pageSize = Math.min(100, s);
       displayCurrentPage(`Buffer window adjusted to: ${pageSize}`);
     }
-  } else if (cmd === 's' || cmd === 'ping' || cmd === 'speak') {
-    const w = words[currentIndex].word;
-    speakWord(w);
-    displayCurrentPage(viewMode === 'log' ? `Ping audio frame sent for [${w}] (200 OK)` : `正在朗读当前首词: "${w}"`);
   } else if (cmd.startsWith(':')) {
     const target = cmd.slice(1).trim().toLowerCase();
     if (target === 'top' || target === 'reset' || target === 'first' || target === 'start') {
