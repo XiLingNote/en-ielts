@@ -88,32 +88,29 @@
     }
 
     .btn-header-expand {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--card-border);
-      color: var(--text-muted);
-      width: 34px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--accent);
+      padding: 0 10px;
       height: 34px;
       border-radius: 9px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 4px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 12.5px;
       font-weight: 700;
       flex-shrink: 0;
-      transition: all 0.15s ease;
+      transition: all 0.2s ease;
+      white-space: nowrap;
     }
 
-    .btn-header-expand:hover, .btn-header-expand:active {
-      background: rgba(56, 189, 248, 0.2);
-      color: var(--accent);
-      border-color: rgba(56, 189, 248, 0.4);
-    }
-
+    .btn-header-expand:hover, .btn-header-expand:active,
     header.header-expanded .btn-header-expand {
-      background: rgba(56, 189, 248, 0.2);
-      color: var(--accent);
-      border-color: rgba(56, 189, 248, 0.5);
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
     }
 
     .logo-area {
@@ -1549,9 +1546,10 @@
           全景通读词书
         </button>
       </div>
-      <!-- 展开/收起顶部全貌按钮 -->
-      <button class="btn-header-expand" id="btn-toggle-header-expand" title="点击展开/收起顶部标题与管理">
-        <span id="header-expand-icon">⋯</span>
+      <!-- 展开/收起顶部全貌按钮 (醒目标签) -->
+      <button class="btn-header-expand" id="btn-toggle-header-expand" title="点击展开/收起词库管理与标题">
+        <span id="header-expand-icon">⚙️</span>
+        <span id="header-expand-text">管理</span>
       </button>
     </div>
   </header>
@@ -3099,6 +3097,7 @@
     const siteHeader = document.getElementById("site-header");
     const btnToggleHeaderExpand = document.getElementById("btn-toggle-header-expand");
     const headerExpandIcon = document.getElementById("header-expand-icon");
+    const headerExpandText = document.getElementById("header-expand-text");
 
     function updateHeaderHeight() {
       if (!siteHeader) return;
@@ -3113,9 +3112,11 @@
       if (expanded) {
         siteHeader.classList.add("header-expanded");
         if (headerExpandIcon) headerExpandIcon.textContent = "✕";
+        if (headerExpandText) headerExpandText.textContent = "收起";
       } else {
         siteHeader.classList.remove("header-expanded");
-        if (headerExpandIcon) headerExpandIcon.textContent = "⋯";
+        if (headerExpandIcon) headerExpandIcon.textContent = "⚙️";
+        if (headerExpandText) headerExpandText.textContent = "管理";
       }
       setTimeout(updateHeaderHeight, 50);
     }
