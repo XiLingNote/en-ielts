@@ -98,30 +98,49 @@ function escapeRegExp(string) {
 // -------------------------------------------------------------
 // 渲染器 1：微服务生产日志流 (思路1 · 最强摸鱼伪装)
 // -------------------------------------------------------------
-function renderLogLine(item, index, highlightKeyword = '') {
-  const now = new Date();
-  const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ` +
-                  `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.` +
-                  `${String(100 + (index % 899)).padStart(3, '0')}`;
+function formatLogTime(baseDate, offsetMs) {
+  const d = new Date(baseDate.getTime() + offsetMs);
+  const Y = d.getFullYear();
+  const M = String(d.getMonth() + 1).padStart(2, '0');
+  const D = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  const ms = String(d.getMilliseconds()).padStart(3, '0');
+  return `${Y}-${M}-${D} ${h}:${m}:${s}.${ms}`;
+}
 
+const fakeLogTemplates = [
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[HikariPool-1-housekeeper]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}com.zaxxer.hikari.pool.HikariPool${c.reset} - Pool stats (total=10, active=2, idle=8, waiting=0)`,
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[nio-8080-exec-1]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}o.s.web.servlet.DispatcherServlet${c.reset} - Completed 200 OK, response size: 1.4KB (latency: 16ms)`,
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[kafka-consumer-1]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}o.a.k.c.c.internals.ConsumerCoordinator${c.reset} - Successfully synced partition assignments for group [dict-sync-cg]`,
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[redisson-timer-3-1]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}org.redisson.command.RedisExecutor${c.reset} - Response received for command: HGET [cluster_meta_key] in 1.8ms`,
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[nio-8080-exec-6]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}c.m.gateway.access.AuditLogger${c.reset} - [Trace#7e01a] URI=/api/v2/entry status=SUCCESS (latency: 9ms)`,
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[lettuce-epollEventLoop-4-1]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}io.lettuce.core.protocol.CommandHandler${c.reset} - Pipelined command batch [8 keys] dispatched successfully`,
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[scheduling-1]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}c.m.service.task.ScheduleCronJob${c.reset} - Periodic cluster heartbeat verified. 0 warnings, 0 degraded`,
+  (t) => `${c.gray}${t}${c.reset} ${c.dim}[nio-8080-exec-2]${c.reset} ${c.green}INFO ${c.reset} ${c.cyan}c.m.security.filter.JwtAuthFilter${c.reset} - Token validated for subject [principal_id: 884021] in 3ms`,
+];
+
+function renderLogLine(item, index, highlightKeyword = '', customTime = '') {
+  const timeStr = customTime || formatLogTime(new Date(), index * 45);
   const thread = `[nio-8080-exec-${(index % 8) + 1}]`;
   const level = `${c.green}INFO ${c.reset}`;
-  const logger = `${c.cyan}c.m.service.LexiconRegistry${c.reset}`;
+  const logger = `${c.cyan}c.m.dict.DictRegistry${c.reset}`;
   const idxStr = `#${String(index + 1).padStart(4, '0')}`;
 
   const rawWord = item.word;
-  const rawPhonetic = item.phonetic ? ` (${item.phonetic.replace(/^\/|\/$/g, '')})` : '';
+  const rawPhonetic = item.phonetic ? ` ${c.magenta}(${item.phonetic.replace(/^\/|\/$/g, '')})${c.reset}` : '';
   let meaning = item.meaning || '';
 
   // 关键词高亮
-  let wordDisplay = `${c.brightYellow}"${rawWord}"${c.reset}`;
+  let wordDisplay = `${c.bold}${c.brightYellow}${rawWord}${c.reset}`;
   if (highlightKeyword) {
     const reg = new RegExp(`(${escapeRegExp(highlightKeyword)})`, 'gi');
     wordDisplay = wordDisplay.replace(reg, `${c.bgHighlight}$1${c.reset}`);
     meaning = meaning.replace(reg, `${c.bgHighlight}$1${c.reset}`);
   }
 
-  return `${c.gray}${timeStr}${c.reset} ${c.dim}${thread}${c.reset} ${level} ${logger} - [${c.brightCyan}${idxStr}${c.reset}] token=${wordDisplay}${c.magenta}${rawPhonetic}${c.reset} :: ${c.white}${meaning}${c.reset}`;
+  return `${c.gray}${timeStr}${c.reset} ${c.dim}${thread}${c.reset} ${level} ${logger} - [${c.brightCyan}${idxStr}${c.reset}] ${wordDisplay}${rawPhonetic} ${c.gray}->${c.reset} ${c.white}${meaning}${c.reset}`;
 }
 
 // -------------------------------------------------------------
@@ -225,9 +244,26 @@ function displayCurrentPage(message = '', searchKeyword = '') {
     console.log(`${c.gray}[cluster-prod-01] tail -f /var/log/app-service.log (PID: 19482, offset: #${currentIndex + 1}~#${endIdx} / ${words.length})${c.reset}`);
     console.log(`${c.gray}${'─'.repeat(width)}${c.reset}`);
 
+    const baseDate = new Date();
+    let curMs = 0;
+
     for (let i = currentIndex; i < endIdx; i++) {
-      console.log(renderLogLine(words[i], i, searchKeyword));
+      // 在第 1 个词前，或每隔 2 个词穿插一条逼真的系统日志
+      if ((i - currentIndex) === 0 || (i - currentIndex) === 2 || (i - currentIndex) === 4) {
+        const fakeIdx = (i * 3 + 1) % fakeLogTemplates.length;
+        const fakeTime = formatLogTime(baseDate, curMs);
+        console.log(fakeLogTemplates[fakeIdx](fakeTime));
+        curMs += Math.floor(18 + Math.random() * 25);
+      }
+
+      const wordTime = formatLogTime(baseDate, curMs);
+      console.log(renderLogLine(words[i], i, searchKeyword, wordTime));
+      curMs += Math.floor(25 + Math.random() * 35);
     }
+
+    // 尾部穿插一条收尾日志
+    const endFakeTime = formatLogTime(baseDate, curMs);
+    console.log(fakeLogTemplates[1](endFakeTime));
 
     console.log(`${c.gray}${'─'.repeat(width)}${c.reset}`);
     const showMsg = message || initialWelcome;
