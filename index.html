@@ -17,6 +17,7 @@
       --success: #10b981;
       --warning: #f59e0b;
       --danger: #ef4444;
+      --header-height: 48px;
     }
 
     * {
@@ -182,17 +183,17 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     }
 
-    /* 主布局 */
+    /* 主布局 (左右绝对对称，顶部与 Header 保持黄金安全间距，杜绝遮盖) */
     .container {
       flex: 1;
       max-width: 1050px;
-      width: 100%;
-      margin: 0 auto;
-      padding: calc(58px + env(safe-area-inset-top, 0px)) 16px 40px 16px;
-      display: grid;
-      grid-template-columns: 1fr 320px;
-      gap: 20px;
-      box-sizing: border-box;
+      width: 100% !important;
+      margin: 0 auto !important;
+      padding: calc(var(--header-height, 48px) + 14px) 12px 40px 12px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-sizing: border-box !important;
+      min-width: 0 !important;
     }
 
     /* 播放舞台区域 */
@@ -1291,7 +1292,7 @@
     }
 
   
-    /* 📱 三星 S24 等窄屏移动端超强防溢出与吸顶适配 */
+    /* 📱 三星 S24 等移动端超强防溢出、左右严格绝对居中对称与防遮盖吸顶适配 */
     html, body {
       overflow-x: clip !important;
       max-width: 100vw !important;
@@ -1302,24 +1303,31 @@
       max-width: 100% !important;
       width: 100% !important;
       min-width: 0 !important;
-      padding: calc(56px + env(safe-area-inset-top, 0px)) 10px 40px 10px !important;
+      padding-top: calc(var(--header-height, 48px) + 14px) !important;
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+      padding-bottom: 40px !important;
+      box-sizing: border-box !important;
     }
 
-    #view-player, #view-reader {
+    #view-player, #view-reader,
+    .player-section, .word-card, .controls-card, .sidebar,
+    .reader-toolbar, .reader-list, .reader-card {
       max-width: 100% !important;
       width: 100% !important;
       min-width: 0 !important;
+      box-sizing: border-box !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
     }
 
     .reader-toolbar {
-      max-width: 100% !important;
-      width: 100% !important;
-      min-width: 0 !important;
       position: sticky !important;
-      top: calc(48px + env(safe-area-inset-top, 0px)) !important;
+      top: calc(var(--header-height, 48px) + 6px) !important;
       z-index: 90 !important;
       padding: 8px 10px !important;
       border-radius: 14px !important;
+      box-sizing: border-box !important;
     }
 
     .alphabet-nav {
@@ -1331,19 +1339,13 @@
     }
 
     .reader-list {
-      max-width: 100% !important;
-      width: 100% !important;
-      min-width: 0 !important;
       padding-top: 0 !important;
     }
 
     .reader-card {
-      max-width: 100% !important;
-      width: 100% !important;
-      min-width: 0 !important;
       word-break: break-word !important;
       overflow-wrap: anywhere !important;
-      scroll-margin-top: calc(148px + env(safe-area-inset-top, 0px)) !important;
+      scroll-margin-top: calc(var(--header-height, 48px) + 110px) !important;
     }
 
     .reader-card-info {
@@ -1362,7 +1364,9 @@
 
     @media (max-width: 640px) {
       .container {
-        padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+        padding-top: calc(var(--header-height, 48px) + 14px) !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
       }
 
       .controls-card {
@@ -1395,7 +1399,7 @@
         align-items: stretch !important;
         padding: 12px 14px !important;
         gap: 10px !important;
-        scroll-margin-top: calc(152px + env(safe-area-inset-top, 0px)) !important;
+        scroll-margin-top: calc(var(--header-height, 48px) + 110px) !important;
       }
 
       .reader-card-actions {
@@ -1407,14 +1411,15 @@
       }
 
       .reader-search-row {
-        flex-direction: column !important;
-        align-items: stretch !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
         gap: 8px !important;
       }
 
       .reader-stats {
         text-align: right !important;
-        font-size: 11px !important;
+        font-size: 11.5px !important;
       }
 
       .current-word {
@@ -1454,6 +1459,62 @@
 
     .word-jump-select:focus {
       border-color: var(--accent);
+    }
+
+    /* 全景通读搜索切换按钮与展开输入框 */
+    .btn-search-toggle {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      border-radius: 9px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .btn-search-toggle:hover, .btn-search-toggle.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .reader-collapsible-search {
+      display: none;
+      width: 100%;
+      margin-top: 4px;
+      animation: fadeIn 0.15s ease;
+    }
+
+    .reader-collapsible-search.show {
+      display: block;
+    }
+
+    /* 防误触模拟熄屏退出按钮 */
+    .btn-exit-fake-screen {
+      background: rgba(239, 68, 68, 0.22);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      border-radius: 99px;
+      padding: 12px 28px;
+      font-size: 14.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .btn-exit-fake-screen:active {
+      transform: scale(0.96);
+      background: rgba(239, 68, 68, 0.4);
     }
   </style>
 </head>
@@ -1703,15 +1764,20 @@
     <div id="view-reader">
       <div class="reader-toolbar">
         <div class="reader-search-row">
-          <div class="search-input-box">
-            <input type="text" id="reader-search-input" placeholder="输入英文或中文搜索（如 accept 或 接受）...">
-            <button class="search-clear-btn" id="reader-search-clear">✕</button>
-          </div>
+          <button class="btn-search-toggle" id="btn-toggle-search" title="点击展开/收起搜索框">
+            <span id="search-toggle-icon">🔍</span>
+            <span id="search-toggle-text">搜索</span>
+          </button>
           <button class="btn-primary" id="btn-reader-toggle-play" style="padding: 7px 14px; font-size: 13px; border-radius: 9px; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0;" title="在全景模式下开启/暂停循环朗读">
             <span id="reader-play-icon">▶</span>
             <span id="reader-play-text">连续伴读</span>
           </button>
           <span class="reader-stats" id="reader-stats">共 2,596 词</span>
+        </div>
+        <!-- 展开式搜索输入框 (默认隐藏，点击🔍展开) -->
+        <div class="search-input-box reader-collapsible-search" id="reader-search-box">
+          <input type="text" id="reader-search-input" placeholder="输入英文或中文搜索（如 accept 或 接受）...">
+          <button class="search-clear-btn" id="reader-search-clear">✕</button>
         </div>
         <!-- 字母导航栏 -->
         <div class="alphabet-nav" id="alphabet-nav">
@@ -1757,8 +1823,11 @@
       <div class="fake-phonetic" id="fake-phonetic-text">/əkˈsept/</div>
       <div class="fake-meaning" id="fake-meaning-text">v. 接受，收受</div>
     </div>
-    <div class="fake-screen-bottom">
-      👆 双击或长按任意位置退出熄屏
+    <div class="fake-screen-bottom" style="display:flex; flex-direction:column; align-items:center; gap:12px; border:none; padding:0;">
+      <button class="btn-exit-fake-screen" id="btn-exit-fake-screen">
+        ✕ 点击退出防误触模式
+      </button>
+      <span style="font-size:12px; color:rgba(255,255,255,0.35); letter-spacing:0.5px;">轻触上方按钮或屏幕任意区域即可退出</span>
     </div>
   </div>
 
@@ -2122,7 +2191,9 @@
       progressPercent.textContent = `${percent}%`;
 
       localStorage.setItem("english_words_index", currentIndex);
-      if (wordJumpSelect && wordJumpSelect.value != currentIndex) {
+      if (typeof syncWordJumpSelect === "function") {
+        syncWordJumpSelect();
+      } else if (wordJumpSelect && wordJumpSelect.value != currentIndex) {
         wordJumpSelect.value = currentIndex;
       }
       updateWordListActive();
@@ -2920,30 +2991,81 @@
       });
     }
 
+    // 全景搜索框展开/收起切换逻辑 (默认隐藏收起，极度节省高度防遮挡)
+    const btnToggleSearch = document.getElementById("btn-toggle-search");
+    const readerSearchBox = document.getElementById("reader-search-box");
+    const searchToggleText = document.getElementById("search-toggle-text");
+
+    function setReaderSearchVisible(visible) {
+      if (!readerSearchBox) return;
+      if (visible) {
+        readerSearchBox.classList.add("show");
+        if (btnToggleSearch) btnToggleSearch.classList.add("active");
+        if (searchToggleText) searchToggleText.textContent = "收起";
+        if (readerSearchInput) {
+          setTimeout(() => readerSearchInput.focus(), 50);
+        }
+      } else {
+        readerSearchBox.classList.remove("show");
+        if (btnToggleSearch) btnToggleSearch.classList.remove("active");
+        if (searchToggleText) searchToggleText.textContent = "搜索";
+        if (readerSearchInput && !readerSearchInput.value.trim() && searchQuery) {
+          searchQuery = "";
+          readerRenderLimit = 150;
+          renderReaderView();
+        }
+      }
+      updateHeaderHeight();
+    }
+
+    if (btnToggleSearch) {
+      btnToggleSearch.addEventListener("click", () => {
+        const isVisible = readerSearchBox && readerSearchBox.classList.contains("show");
+        setReaderSearchVisible(!isVisible);
+      });
+    }
+
     // 搜索输入防抖
     let searchDebounceTimer = null;
-    readerSearchInput.addEventListener("input", (e) => {
-      searchQuery = e.target.value;
-      readerSearchClear.style.display = searchQuery ? "block" : "none";
-      clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(() => {
+    if (readerSearchInput) {
+      readerSearchInput.addEventListener("input", (e) => {
+        searchQuery = e.target.value;
+        if (readerSearchClear) readerSearchClear.style.display = searchQuery ? "block" : "none";
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+          readerRenderLimit = 150;
+          renderReaderView();
+        }, 200);
+      });
+    }
+
+    if (readerSearchClear) {
+      readerSearchClear.addEventListener("click", () => {
+        if (readerSearchInput) readerSearchInput.value = "";
+        searchQuery = "";
+        readerSearchClear.style.display = "none";
         readerRenderLimit = 150;
         renderReaderView();
-      }, 200);
-    });
-
-    readerSearchClear.addEventListener("click", () => {
-      readerSearchInput.value = "";
-      searchQuery = "";
-      readerSearchClear.style.display = "none";
-      readerRenderLimit = 150;
-      renderReaderView();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+        setReaderSearchVisible(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
 
     // ==========================================
-    // 🎯 单词快捷选择下拉框初始化与事件监听
+    // 🎯 单词快捷选择下拉框初始化与精准高亮同步
     // ==========================================
+    function syncWordJumpSelect() {
+      if (!wordJumpSelect || words.length === 0) return;
+      wordJumpSelect.value = currentIndex;
+      // 关键：显式将目标 option 的 selected 置为 true，确保手机原生滚动 Picker 默认定位到当前单词
+      const opts = wordJumpSelect.options;
+      if (opts && opts.length > 0) {
+        for (let i = 0; i < opts.length; i++) {
+          opts[i].selected = (i === currentIndex);
+        }
+      }
+    }
+
     function initWordJumpSelect() {
       if (!wordJumpSelect) return;
       wordJumpSelect.innerHTML = "";
@@ -2952,13 +3074,17 @@
         const opt = document.createElement("option");
         opt.value = idx;
         opt.textContent = `${idx + 1}. ${item.word}`;
+        if (idx === currentIndex) opt.selected = true;
         fragment.appendChild(opt);
       });
       wordJumpSelect.appendChild(fragment);
-      wordJumpSelect.value = currentIndex;
+      syncWordJumpSelect();
     }
 
     if (wordJumpSelect) {
+      // 在用户点击或聚焦时，再次强制同步一次确保定位精准
+      wordJumpSelect.addEventListener("focus", syncWordJumpSelect);
+      wordJumpSelect.addEventListener("click", syncWordJumpSelect);
       wordJumpSelect.addEventListener("change", (e) => {
         const targetIndex = parseInt(e.target.value, 10);
         if (!isNaN(targetIndex)) {
@@ -2968,11 +3094,19 @@
     }
 
     // ==========================================
-    // 🧭 顶部导航栏展开/收起与滚动感知逻辑
+    // 🧭 顶部导航栏高度动态测量与展开/收起联动
     // ==========================================
     const siteHeader = document.getElementById("site-header");
     const btnToggleHeaderExpand = document.getElementById("btn-toggle-header-expand");
     const headerExpandIcon = document.getElementById("header-expand-icon");
+
+    function updateHeaderHeight() {
+      if (!siteHeader) return;
+      const h = siteHeader.offsetHeight;
+      if (h > 0) {
+        document.documentElement.style.setProperty("--header-height", `${h}px`);
+      }
+    }
 
     function setHeaderExpanded(expanded) {
       if (!siteHeader) return;
@@ -2983,6 +3117,7 @@
         siteHeader.classList.remove("header-expanded");
         if (headerExpandIcon) headerExpandIcon.textContent = "⋯";
       }
+      setTimeout(updateHeaderHeight, 50);
     }
 
     if (btnToggleHeaderExpand) {
@@ -3000,6 +3135,8 @@
       }
     }, { passive: true });
 
+    window.addEventListener("resize", updateHeaderHeight);
+
     loadSavedData();
     initAlphabetNav();
     initWordJumpSelect();
@@ -3007,9 +3144,10 @@
     initVoices();
     renderWord();
     renderWordList();
+    updateHeaderHeight();
   
     // ==========================================
-    // 🕶️ 模拟熄屏模式逻辑 (绕过 UC、微信等锁屏强制杀后台)
+    // 🕶️ 模拟熄屏防误触模式逻辑 (全屏极度纯净，随时一键秒退)
     // ==========================================
     function enterFakeScreen() {
       isFakeScreenOn = true;
@@ -3032,6 +3170,7 @@
     }
 
     function exitFakeScreen() {
+      if (!isFakeScreenOn) return;
       isFakeScreenOn = false;
       fakeScreenOverlay.style.display = "none";
       try {
@@ -3047,26 +3186,26 @@
       btnFakeScreenOff.addEventListener("click", enterFakeScreen);
     }
 
-    // 双击或触屏退出模拟熄屏
-    if (fakeScreenOverlay) {
-      fakeScreenOverlay.addEventListener("dblclick", exitFakeScreen);
-
-      let touchTimer = null;
-      fakeScreenOverlay.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        touchTimer = setTimeout(() => {
-          exitFakeScreen();
-        }, 500); // 长按 500 毫秒退出
-      }, { passive: false });
-
-      fakeScreenOverlay.addEventListener("touchend", () => {
-        if (touchTimer) clearTimeout(touchTimer);
-      });
-
-      fakeScreenOverlay.addEventListener("touchmove", () => {
-        if (touchTimer) clearTimeout(touchTimer);
+    // 退出机制：醒目退出按钮 + 遮罩直接单触点击退出 + 键盘 ESC/Space，彻底解决无法退出的 Bug
+    const btnExitFakeScreen = document.getElementById("btn-exit-fake-screen");
+    if (btnExitFakeScreen) {
+      btnExitFakeScreen.addEventListener("click", (e) => {
+        e.stopPropagation();
+        exitFakeScreen();
       });
     }
+
+    if (fakeScreenOverlay) {
+      fakeScreenOverlay.addEventListener("click", () => {
+        exitFakeScreen();
+      });
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (isFakeScreenOn && (e.key === "Escape" || e.code === "Space")) {
+        exitFakeScreen();
+      }
+    });
 
   </script>
 </body>
