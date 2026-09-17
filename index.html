@@ -970,6 +970,55 @@
       white-space: nowrap;
     }
 
+    .reader-jump-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .reader-jump-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .reader-jump-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .reader-jump-select {
+      flex: 1;
+      max-width: 240px;
+    }
+
+    /* 🎯 全景卡片跳转高亮动效 */
+    @keyframes jumpCardPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7);
+        border-color: var(--accent);
+        transform: scale(1.02);
+      }
+      50% {
+        box-shadow: 0 0 20px 4px rgba(56, 189, 248, 0.5);
+        border-color: var(--accent);
+      }
+      100% {
+        box-shadow: none;
+        transform: scale(1);
+      }
+    }
+
+    .reader-card.jump-highlight {
+      animation: jumpCardPulse 1.8s ease-out;
+      border-color: var(--accent) !important;
+    }
+
     /* 字母横向滚动条 */
     .alphabet-nav {
       display: flex;
@@ -1428,9 +1477,23 @@
         gap: 8px !important;
       }
 
+      .reader-jump-row {
+        gap: 6px !important;
+      }
+
+      .reader-jump-label {
+        font-size: 11px !important;
+      }
+
+      .reader-jump-select {
+        max-width: 170px !important;
+        font-size: 11.5px !important;
+        padding: 3px 6px !important;
+      }
+
       .reader-stats {
         text-align: right !important;
-        font-size: 11.5px !important;
+        font-size: 11px !important;
       }
 
       .current-word {
@@ -1529,10 +1592,10 @@
       </div>
       <!-- 顶部右侧控制按钮组 (管理与全景工具栏展开按钮) -->
       <div class="header-right-btns">
-        <!-- 全景通读模式专属：展开/收起搜索与A-Z工具栏按钮 (默认放在管理旁边) -->
-        <button class="btn-header-expand" id="btn-toggle-reader-toolbar" style="display: none;" title="展开/收起全景搜索与A-Z筛选栏">
-          <span id="reader-toolbar-toggle-icon">🔍</span>
-          <span id="reader-toolbar-toggle-text">筛选</span>
+        <!-- 全景通读模式专属：展开/收起跳转、搜索与A-Z筛选工具栏按钮 (默认放在管理旁边) -->
+        <button class="btn-header-expand" id="btn-toggle-reader-toolbar" style="display: none;" title="展开/收起全景快速跳转、搜索与A-Z筛选栏">
+          <span id="reader-toolbar-toggle-icon">🎯</span>
+          <span id="reader-toolbar-toggle-text">跳转/筛选</span>
         </button>
         <!-- 展开/收起顶部全貌按钮 (管理词库与重置) -->
         <button class="btn-header-expand" id="btn-toggle-header-expand" title="点击展开/收起词库管理与标题">
@@ -1759,6 +1822,15 @@
             <span id="reader-play-icon">▶</span>
             <span id="reader-play-text">连续伴读</span>
           </button>
+        </div>
+        <!-- 🎯 全景快速跳转下拉框与词数统计 -->
+        <div class="reader-jump-row">
+          <div class="reader-jump-wrapper">
+            <span class="reader-jump-label">🎯 快速跳转：</span>
+            <select class="word-jump-select reader-jump-select" id="reader-word-jump-select" title="直接选择第几个单词快速跳转定位">
+              <!-- 动态加载单词选项 -->
+            </select>
+          </div>
           <span class="reader-stats" id="reader-stats">共 2,596 词</span>
         </div>
         <!-- 字母导航栏 -->
@@ -1851,6 +1923,7 @@
     const progressPercent = document.getElementById("progress-percent");
     const progressBarContainer = document.getElementById("progress-bar-container");
     const wordJumpSelect = document.getElementById("word-jump-select");
+    const readerWordJumpSelect = document.getElementById("reader-word-jump-select");
 
     const btnPlayToggle = document.getElementById("btn-play-toggle");
     const playIcon = document.getElementById("play-icon");
@@ -3000,8 +3073,8 @@
       } else {
         readerToolbar.classList.remove("show");
         if (btnToggleReaderToolbar) btnToggleReaderToolbar.classList.remove("active");
-        if (readerToolbarToggleIcon) readerToolbarToggleIcon.textContent = "🔍";
-        if (readerToolbarToggleText) readerToolbarToggleText.textContent = "筛选";
+        if (readerToolbarToggleIcon) readerToolbarToggleIcon.textContent = "🎯";
+        if (readerToolbarToggleText) readerToolbarToggleText.textContent = "跳转/筛选";
       }
       setTimeout(updateHeaderHeight, 30);
     }
@@ -3012,6 +3085,57 @@
         const isShow = readerToolbar && readerToolbar.classList.contains("show");
         setReaderToolbarVisible(!isShow);
       });
+    }
+
+    // 全景通读精准跳词定位函数 (支持跨筛选解除、增量渲染扩充与流光高亮动效)
+    function jumpToReaderIndex(targetIndex) {
+      if (isNaN(targetIndex) || targetIndex < 0 || targetIndex >= words.length) return;
+
+      // 1. 若当前存在筛选（搜索或字母过滤）导致目标词可能不在视图中，自动解除筛选展示全表
+      let needReRender = false;
+      if (currentFilterLetter !== "ALL") {
+        currentFilterLetter = "ALL";
+        if (alphabetNav) {
+          alphabetNav.querySelectorAll(".letter-btn").forEach(b => {
+            b.classList.toggle("active", b.textContent.startsWith("全部"));
+          });
+        }
+        needReRender = true;
+      }
+      if (searchQuery) {
+        searchQuery = "";
+        if (readerSearchInput) readerSearchInput.value = "";
+        if (readerSearchClear) readerSearchClear.style.display = "none";
+        needReRender = true;
+      }
+
+      // 2. 确保全景渲染数量覆盖到该目标单词
+      if (targetIndex >= readerRenderLimit) {
+        readerRenderLimit = Math.max(readerRenderLimit, targetIndex + 50);
+        needReRender = true;
+      }
+
+      if (needReRender) {
+        renderReaderView();
+      }
+
+      // 3. 更新当前全局单词索引并同步伴读界面
+      currentIndex = targetIndex;
+      currentRepeatCount = 0;
+      renderWord();
+      syncWordJumpSelect();
+
+      // 4. 平滑定位目标单词卡片并触发高光脉冲动效
+      setTimeout(() => {
+        const targetCard = document.getElementById(`reader-card-${targetIndex}`);
+        if (targetCard) {
+          targetCard.scrollIntoView({ block: "center", behavior: "smooth" });
+          targetCard.classList.remove("jump-highlight");
+          void targetCard.offsetWidth; // 触发重绘以重启关键帧动画
+          targetCard.classList.add("jump-highlight");
+          setTimeout(() => targetCard.classList.remove("jump-highlight"), 2200);
+        }
+      }, needReRender ? 60 : 10);
     }
 
     // 搜索输入防抖
@@ -3042,43 +3166,69 @@
     }
 
     // ==========================================
-    // 🎯 单词快捷选择下拉框初始化与精准高亮同步
+    // 🎯 单词快捷选择下拉框初始化与精准高亮同步 (伴读与全景双端联动)
     // ==========================================
+    function getActiveJumpSelects() {
+      return [
+        document.getElementById("word-jump-select"),
+        document.getElementById("reader-word-jump-select")
+      ].filter(Boolean);
+    }
+
     function syncWordJumpSelect() {
-      if (!wordJumpSelect || words.length === 0) return;
-      wordJumpSelect.value = currentIndex;
-      // 关键：显式将目标 option 的 selected 置为 true，确保手机原生滚动 Picker 默认定位到当前单词
-      const opts = wordJumpSelect.options;
-      if (opts && opts.length > 0) {
-        for (let i = 0; i < opts.length; i++) {
-          opts[i].selected = (i === currentIndex);
+      if (words.length === 0) return;
+      const selects = getActiveJumpSelects();
+      selects.forEach(sel => {
+        sel.value = currentIndex;
+        // 显式将目标 option 的 selected 置为 true，确保手机原生滚动 Picker 默认定位到当前单词
+        const opts = sel.options;
+        if (opts && opts.length > 0) {
+          for (let i = 0; i < opts.length; i++) {
+            opts[i].selected = (i === currentIndex);
+          }
         }
-      }
+      });
     }
 
     function initWordJumpSelect() {
-      if (!wordJumpSelect) return;
-      wordJumpSelect.innerHTML = "";
-      const fragment = document.createDocumentFragment();
-      words.forEach((item, idx) => {
-        const opt = document.createElement("option");
-        opt.value = idx;
-        opt.textContent = `${idx + 1}. ${item.word}`;
-        if (idx === currentIndex) opt.selected = true;
-        fragment.appendChild(opt);
+      const selects = getActiveJumpSelects();
+      if (selects.length === 0 || words.length === 0) return;
+
+      selects.forEach(sel => {
+        sel.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+        words.forEach((item, idx) => {
+          const opt = document.createElement("option");
+          opt.value = idx;
+          opt.textContent = `${idx + 1}. ${item.word}`;
+          if (idx === currentIndex) opt.selected = true;
+          fragment.appendChild(opt);
+        });
+        sel.appendChild(fragment);
       });
-      wordJumpSelect.appendChild(fragment);
       syncWordJumpSelect();
     }
 
     if (wordJumpSelect) {
-      // 在用户点击或聚焦时，再次强制同步一次确保定位精准
+      // 伴读模式下拉框
       wordJumpSelect.addEventListener("focus", syncWordJumpSelect);
       wordJumpSelect.addEventListener("click", syncWordJumpSelect);
       wordJumpSelect.addEventListener("change", (e) => {
         const targetIndex = parseInt(e.target.value, 10);
         if (!isNaN(targetIndex)) {
           jumpToIndex(targetIndex, true);
+        }
+      });
+    }
+
+    if (readerWordJumpSelect) {
+      // 全景通读模式下拉框
+      readerWordJumpSelect.addEventListener("focus", syncWordJumpSelect);
+      readerWordJumpSelect.addEventListener("click", syncWordJumpSelect);
+      readerWordJumpSelect.addEventListener("change", (e) => {
+        const targetIndex = parseInt(e.target.value, 10);
+        if (!isNaN(targetIndex)) {
+          jumpToReaderIndex(targetIndex);
         }
       });
     }
