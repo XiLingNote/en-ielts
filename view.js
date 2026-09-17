@@ -272,7 +272,7 @@ function displayCurrentPage(message = '', searchKeyword = '') {
       initialWelcome = '';
     }
     console.log(
-      `${c.dim}[Enter:next] [b:prev] [:a~:z:group] [:num:offset] [/key:grep] [m:mode] [q:exit]${c.reset}`
+      `${c.dim}[↑/↓:page] [Enter/Space:next] [b:prev] [:a~:z:group] [:num:offset] [/key:grep] [m:mode] [q:exit]${c.reset}`
     );
   } else {
     // 全景卡片模式
@@ -294,7 +294,8 @@ function displayCurrentPage(message = '', searchKeyword = '') {
     }
     console.log(
       `${c.bold}快捷指令:${c.reset} ` +
-      `[${c.brightGreen}Enter${c.reset}:下页] ` +
+      `[${c.brightGreen}↑/↓${c.reset}:翻页] ` +
+      `[${c.brightGreen}Enter/空格${c.reset}:下页] ` +
       `[${c.brightGreen}b${c.reset}:上页] ` +
       `[${c.brightGreen}:a~:z${c.reset}:跳字母] ` +
       `[${c.brightGreen}:序号${c.reset}:跳词] ` +
@@ -303,46 +304,75 @@ function displayCurrentPage(message = '', searchKeyword = '') {
       `[${c.brightGreen}q${c.reset}:退出]`
     );
   }
+
+  // 打印提示符与光标
+  renderPromptLine();
 }
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  prompt: viewMode === 'log' ? `${c.green}app@cluster-node01:~$ ${c.reset}` : `${c.cyan}词库导航 > ${c.reset}`
-});
+// -------------------------------------------------------------
+// 终端交互控制 (支持上下方向键 ↑ / ↓ 即时翻页)
+// -------------------------------------------------------------
+readline.emitKeypressEvents(process.stdin);
+if (process.stdin.isTTY) {
+  process.stdin.setRawMode(true);
+}
 
-displayCurrentPage();
-rl.prompt();
+let inputBuffer = '';
 
-rl.on('line', (line) => {
-  const cmd = line.trim();
+function getPromptText() {
+  return viewMode === 'log' ? `${c.green}app@cluster-node01:~$ ${c.reset}` : `${c.cyan}词库导航 > ${c.reset}`;
+}
+
+function renderPromptLine() {
+  process.stdout.write('\r\x1b[K' + getPromptText() + inputBuffer);
+}
+
+function exitApp() {
+  if (process.stdin.isTTY) {
+    try { process.stdin.setRawMode(false); } catch (e) {}
+  }
+  if (viewMode === 'log') {
+    console.log(`\n${c.gray}[system] Process detached from session (PID: 19482). Bye.${c.reset}\n`);
+  } else {
+    console.log(`\n${c.brightGreen}👋 备考加油，雅思 6.0 一战必过！${c.reset}\n`);
+  }
+  process.exit(0);
+}
+
+function nextPage() {
+  if (currentIndex + pageSize < words.length) {
+    currentIndex += pageSize;
+    displayCurrentPage();
+  } else {
+    displayCurrentPage('Reached end of event stream');
+  }
+}
+
+function prevPage() {
+  if (currentIndex > 0) {
+    currentIndex = Math.max(0, currentIndex - pageSize);
+    displayCurrentPage();
+  } else {
+    displayCurrentPage('Already at beginning');
+  }
+}
+
+function executeCommand(cmd) {
+  if (!cmd) {
+    nextPage();
+    return;
+  }
 
   if (cmd === 'q' || cmd === 'quit' || cmd === 'exit') {
-    if (viewMode === 'log') {
-      console.log(`\n${c.gray}[system] Process detached from session (PID: 19482). Bye.${c.reset}\n`);
-    } else {
-      console.log(`\n${c.brightGreen}👋 备考加油，雅思 6.0 一战必过！${c.reset}\n`);
-    }
-    process.exit(0);
+    exitApp();
+    return;
   } else if (cmd === 'm' || cmd === 'mode') {
-    // 一键切换模式：log 日志流 vs card 全景卡片
     viewMode = (viewMode === 'log') ? 'card' : 'log';
-    rl.setPrompt(viewMode === 'log' ? `${c.green}app@cluster-node01:~$ ${c.reset}` : `${c.cyan}词库导航 > ${c.reset}`);
     displayCurrentPage(`Switched view mode to: [${viewMode.toUpperCase()}]`);
-  } else if (cmd === '' || cmd === 'n' || cmd === 'next') {
-    if (currentIndex + pageSize < words.length) {
-      currentIndex += pageSize;
-      displayCurrentPage();
-    } else {
-      displayCurrentPage('Reached end of event stream');
-    }
+  } else if (cmd === 'n' || cmd === 'next') {
+    nextPage();
   } else if (cmd === 'b' || cmd === 'p' || cmd === 'prev') {
-    if (currentIndex > 0) {
-      currentIndex = Math.max(0, currentIndex - pageSize);
-      displayCurrentPage();
-    } else {
-      displayCurrentPage('Already at beginning');
-    }
+    prevPage();
   } else if (cmd === '+' || cmd === '=') {
     pageSize = Math.min(50, pageSize + 5);
     displayCurrentPage(`Buffer window adjusted to: ${pageSize}`);
@@ -411,6 +441,82 @@ rl.on('line', (line) => {
       displayCurrentPage(`Unknown command, use /keyword to grep`);
     }
   }
+}
 
-  rl.prompt();
+// 监听按键事件
+process.stdin.on('keypress', (str, key) => {
+  if (!key) return;
+
+  // 1. 退出组合键
+  if ((key.ctrl && key.name === 'c') || (inputBuffer === '' && key.name === 'q')) {
+    exitApp();
+    return;
+  }
+
+  // 2. 方向键 ↑ / ↓ 与 PageUp / PageDown：即时上一页 / 下一页！
+  if (key.name === 'up' || key.name === 'pageup') {
+    inputBuffer = '';
+    prevPage();
+    return;
+  }
+  if (key.name === 'down' || key.name === 'pagedown') {
+    inputBuffer = '';
+    nextPage();
+    return;
+  }
+
+  // 3. 空输入时的快捷操作
+  if (inputBuffer === '') {
+    if (key.name === 'return' || key.name === 'enter' || key.name === 'space') {
+      nextPage();
+      return;
+    }
+    if (key.name === 'b' || key.name === 'k') {
+      prevPage();
+      return;
+    }
+    if (key.name === 'j') {
+      nextPage();
+      return;
+    }
+    if (key.name === 'm') {
+      viewMode = (viewMode === 'log') ? 'card' : 'log';
+      displayCurrentPage(`Switched view mode to: [${viewMode.toUpperCase()}]`);
+      return;
+    }
+    if (str === '+' || str === '=') {
+      pageSize = Math.min(50, pageSize + 5);
+      displayCurrentPage(`Buffer window adjusted to: ${pageSize}`);
+      return;
+    }
+    if (str === '-' || str === '_') {
+      pageSize = Math.max(2, pageSize - 5);
+      displayCurrentPage(`Buffer window adjusted to: ${pageSize}`);
+      return;
+    }
+  }
+
+  // 4. 回车键执行输入命令
+  if (key.name === 'return' || key.name === 'enter') {
+    const cmd = inputBuffer.trim();
+    inputBuffer = '';
+    executeCommand(cmd);
+    return;
+  }
+
+  // 5. 退格键 Backspace
+  if (key.name === 'backspace') {
+    inputBuffer = inputBuffer.slice(0, -1);
+    renderPromptLine();
+    return;
+  }
+
+  // 6. 普通可打印字符录入
+  if (str && str.length === 1 && !key.ctrl && !key.meta) {
+    inputBuffer += str;
+    renderPromptLine();
+  }
 });
+
+// 首次启动展示
+displayCurrentPage();
