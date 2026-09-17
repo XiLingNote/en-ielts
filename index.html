@@ -107,10 +107,18 @@
     }
 
     .btn-header-expand:hover, .btn-header-expand:active,
-    header.header-expanded .btn-header-expand {
+    .btn-header-expand.active,
+    header.header-expanded #btn-toggle-header-expand {
       background: var(--accent);
       color: #0f172a;
       border-color: var(--accent);
+    }
+
+    .header-right-btns {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
     }
 
     .logo-area {
@@ -893,21 +901,27 @@
       }
     }
 
-    /* 全景通读工具栏：Sticky 永久吸顶 (搜索与 A-Z 快速字母筛选) */
+    /* 全景通读工具栏：默认隐藏，由顶部“筛选”按钮展开，展开时 Sticky 永久吸顶 (搜索与 A-Z 快速字母筛选) */
     .reader-toolbar {
+      display: none;
       background: rgba(30, 41, 59, 0.96) !important;
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid var(--card-border);
       border-radius: 14px;
       padding: 10px 14px;
-      display: flex;
       flex-direction: column;
       gap: 8px;
       position: sticky !important;
-      top: calc(52px + env(safe-area-inset-top, 0px)) !important;
+      top: calc(var(--header-height, 48px) + 6px) !important;
       z-index: 90 !important;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+      margin-bottom: 12px;
+    }
+
+    .reader-toolbar.show {
+      display: flex !important;
+      animation: fadeIn 0.18s ease;
     }
 
     .reader-search-row {
@@ -1458,39 +1472,6 @@
       border-color: var(--accent);
     }
 
-    /* 全景通读搜索切换按钮与展开输入框 */
-    .btn-search-toggle {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text-main);
-      border: 1px solid var(--card-border);
-      border-radius: 9px;
-      padding: 6px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: all 0.2s ease;
-    }
-
-    .btn-search-toggle:hover, .btn-search-toggle.active {
-      background: rgba(56, 189, 248, 0.2);
-      color: var(--accent);
-      border-color: rgba(56, 189, 248, 0.5);
-    }
-
-    .reader-collapsible-search {
-      display: none;
-      width: 100%;
-      margin-top: 4px;
-      animation: fadeIn 0.15s ease;
-    }
-
-    .reader-collapsible-search.show {
-      display: block;
-    }
 
     /* 防误触模拟熄屏退出按钮 */
     .btn-exit-fake-screen {
@@ -1546,11 +1527,19 @@
           全景通读词书
         </button>
       </div>
-      <!-- 展开/收起顶部全貌按钮 (醒目标签) -->
-      <button class="btn-header-expand" id="btn-toggle-header-expand" title="点击展开/收起词库管理与标题">
-        <span id="header-expand-icon">⚙️</span>
-        <span id="header-expand-text">管理</span>
-      </button>
+      <!-- 顶部右侧控制按钮组 (管理与全景工具栏展开按钮) -->
+      <div class="header-right-btns">
+        <!-- 全景通读模式专属：展开/收起搜索与A-Z工具栏按钮 (默认放在管理旁边) -->
+        <button class="btn-header-expand" id="btn-toggle-reader-toolbar" style="display: none;" title="展开/收起全景搜索与A-Z筛选栏">
+          <span id="reader-toolbar-toggle-icon">🔍</span>
+          <span id="reader-toolbar-toggle-text">筛选</span>
+        </button>
+        <!-- 展开/收起顶部全貌按钮 (管理词库与重置) -->
+        <button class="btn-header-expand" id="btn-toggle-header-expand" title="点击展开/收起词库管理与标题">
+          <span id="header-expand-icon">⚙️</span>
+          <span id="header-expand-text">管理</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -1760,22 +1749,17 @@
 
     <!-- 视图 2：全景通读手册模式 (A-Z筛选、中英对照、点读发音、搜索) -->
     <div id="view-reader">
-      <div class="reader-toolbar">
+      <div class="reader-toolbar" id="reader-toolbar">
         <div class="reader-search-row">
-          <button class="btn-search-toggle" id="btn-toggle-search" title="点击展开/收起搜索框">
-            <span id="search-toggle-icon">🔍</span>
-            <span id="search-toggle-text">搜索</span>
-          </button>
+          <div class="search-input-box" id="reader-search-box">
+            <input type="text" id="reader-search-input" placeholder="输入英文或中文搜索（如 accept 或 接受）...">
+            <button class="search-clear-btn" id="reader-search-clear">✕</button>
+          </div>
           <button class="btn-primary" id="btn-reader-toggle-play" style="padding: 7px 14px; font-size: 13px; border-radius: 9px; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0;" title="在全景模式下开启/暂停循环朗读">
             <span id="reader-play-icon">▶</span>
             <span id="reader-play-text">连续伴读</span>
           </button>
           <span class="reader-stats" id="reader-stats">共 2,596 词</span>
-        </div>
-        <!-- 展开式搜索输入框 (默认隐藏，点击🔍展开) -->
-        <div class="search-input-box reader-collapsible-search" id="reader-search-box">
-          <input type="text" id="reader-search-input" placeholder="输入英文或中文搜索（如 accept 或 接受）...">
-          <button class="search-clear-btn" id="reader-search-clear">✕</button>
         </div>
         <!-- 字母导航栏 -->
         <div class="alphabet-nav" id="alphabet-nav">
@@ -2816,16 +2800,23 @@
 
     function switchView(viewName) {
       currentView = viewName;
+      const btnToggleReaderToolbar = document.getElementById("btn-toggle-reader-toolbar");
       if (viewName === "player") {
         tabBtnPlayer.classList.add("active");
         tabBtnReader.classList.remove("active");
         viewPlayer.classList.remove("hidden");
         viewReader.classList.remove("active");
+        if (btnToggleReaderToolbar) {
+          btnToggleReaderToolbar.style.display = "none";
+        }
       } else {
         tabBtnPlayer.classList.remove("active");
         tabBtnReader.classList.add("active");
         viewPlayer.classList.add("hidden");
         viewReader.classList.add("active");
+        if (btnToggleReaderToolbar) {
+          btnToggleReaderToolbar.style.display = "inline-flex";
+        }
         renderReaderView();
 
         // 切换到通读词书时，立即重置滚动条到顶部，首个单词完好自然展现，彻底杜绝悬空和遮盖
@@ -2841,6 +2832,7 @@
           }, 120);
         }
       }
+      setTimeout(updateHeaderHeight, 30);
     }
 
     tabBtnPlayer.addEventListener("click", () => switchView("player"));
@@ -2989,37 +2981,36 @@
       });
     }
 
-    // 全景搜索框展开/收起切换逻辑 (默认隐藏收起，极度节省高度防遮挡)
-    const btnToggleSearch = document.getElementById("btn-toggle-search");
-    const readerSearchBox = document.getElementById("reader-search-box");
-    const searchToggleText = document.getElementById("search-toggle-text");
+    // 全景通读工具栏展开/收起切换逻辑 (默认全部隐藏，由顶部“筛选”按钮展开)
+    const btnToggleReaderToolbar = document.getElementById("btn-toggle-reader-toolbar");
+    const readerToolbar = document.getElementById("reader-toolbar");
+    const readerToolbarToggleIcon = document.getElementById("reader-toolbar-toggle-icon");
+    const readerToolbarToggleText = document.getElementById("reader-toolbar-toggle-text");
 
-    function setReaderSearchVisible(visible) {
-      if (!readerSearchBox) return;
+    function setReaderToolbarVisible(visible) {
+      if (!readerToolbar) return;
       if (visible) {
-        readerSearchBox.classList.add("show");
-        if (btnToggleSearch) btnToggleSearch.classList.add("active");
-        if (searchToggleText) searchToggleText.textContent = "收起";
+        readerToolbar.classList.add("show");
+        if (btnToggleReaderToolbar) btnToggleReaderToolbar.classList.add("active");
+        if (readerToolbarToggleIcon) readerToolbarToggleIcon.textContent = "✕";
+        if (readerToolbarToggleText) readerToolbarToggleText.textContent = "收起";
         if (readerSearchInput) {
-          setTimeout(() => readerSearchInput.focus(), 50);
+          setTimeout(() => readerSearchInput.focus(), 60);
         }
       } else {
-        readerSearchBox.classList.remove("show");
-        if (btnToggleSearch) btnToggleSearch.classList.remove("active");
-        if (searchToggleText) searchToggleText.textContent = "搜索";
-        if (readerSearchInput && !readerSearchInput.value.trim() && searchQuery) {
-          searchQuery = "";
-          readerRenderLimit = 150;
-          renderReaderView();
-        }
+        readerToolbar.classList.remove("show");
+        if (btnToggleReaderToolbar) btnToggleReaderToolbar.classList.remove("active");
+        if (readerToolbarToggleIcon) readerToolbarToggleIcon.textContent = "🔍";
+        if (readerToolbarToggleText) readerToolbarToggleText.textContent = "筛选";
       }
-      updateHeaderHeight();
+      setTimeout(updateHeaderHeight, 30);
     }
 
-    if (btnToggleSearch) {
-      btnToggleSearch.addEventListener("click", () => {
-        const isVisible = readerSearchBox && readerSearchBox.classList.contains("show");
-        setReaderSearchVisible(!isVisible);
+    if (btnToggleReaderToolbar) {
+      btnToggleReaderToolbar.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isShow = readerToolbar && readerToolbar.classList.contains("show");
+        setReaderToolbarVisible(!isShow);
       });
     }
 
@@ -3039,13 +3030,14 @@
 
     if (readerSearchClear) {
       readerSearchClear.addEventListener("click", () => {
-        if (readerSearchInput) readerSearchInput.value = "";
+        if (readerSearchInput) {
+          readerSearchInput.value = "";
+          readerSearchInput.focus();
+        }
         searchQuery = "";
         readerSearchClear.style.display = "none";
         readerRenderLimit = 150;
         renderReaderView();
-        setReaderSearchVisible(false);
-        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     }
 
